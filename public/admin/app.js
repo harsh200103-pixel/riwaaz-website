@@ -15,7 +15,8 @@ const CONFIG = {
   address:   '50/2, Shivam Apartment, Bholaram Ustad Marg, Indore',
   city:      'Indore',
   currency:  '₹',
-  categories: ['Cotton Suit', 'Silk Suit', 'Crepe Suit', 'Cord Set', 'Readymade Suit', 'Unstitched Suit', 'Stitched Suit', 'Rumalla Saheb', 'Kurtis', 'Customised'],
+  categories: ['Stitched Suit', 'Unstitched Suit', 'Co-ord Set', '3 Piece Suit', '2 Piece Suit', 'Anarkali', 'One Piece', 'Rumalla Saheb', 'Kurtis', 'Customised'],
+  fabrics: ['Cotton', 'Silk', 'Crepe', 'Velvet', 'Georgette', 'Chiffon', 'Other'],
   paymentModes: ['Cash', 'UPI', 'Card', 'Pending'],
   lowStockThreshold: 5
 };
@@ -502,11 +503,18 @@ const Print = {
 
   bill: (bill) => {
     if (!bill) return;
+    const oldTitle = document.title;
+    const cName = (bill.customer.name || 'Customer').trim().replace(/[^a-zA-Z0-9 ]/g, '');
+    const cPhone = (bill.customer.phone || '').trim();
+    document.title = `${cName}${cPhone ? ' - ' + cPhone : ''} - Bill`;
+
     const printArea = document.getElementById('print-area');
     printArea.innerHTML = Print.buildHtml(bill);
     printArea.classList.remove('hidden');
     window.print();
     printArea.classList.add('hidden');
+    
+    document.title = oldTitle;
   },
 
   shippingLabel: (bill) => {
@@ -550,10 +558,16 @@ const Print = {
         
       </div>
     `;
+    const oldTitle = document.title;
+    const cName = (bill.customer.name || 'Customer').trim().replace(/[^a-zA-Z0-9 ]/g, '');
+    const cPhone = (bill.customer.phone || '').trim();
+    document.title = `${cName}${cPhone ? ' - ' + cPhone : ''} - Shipping Label`;
     
     printArea.classList.remove('hidden');
     window.print();
     printArea.classList.add('hidden');
+    
+    document.title = oldTitle;
   }
 };
 
@@ -673,7 +687,10 @@ const PDF = {
       const pdfWidth  = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${bill.billNumber}_Riwaaz_by_Eshmira.pdf`);
+      
+      const cName = (bill.customer.name || 'Customer').trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const cPhone = (bill.customer.phone || '').trim();
+      pdf.save(`${cName}${cPhone ? '_' + cPhone : ''}_Bill.pdf`);
       Toast.show('✓ PDF downloaded! You can attach it in WhatsApp.', 'success', 4000);
     } catch (err) {
       console.error('PDF error:', err);
@@ -959,11 +976,7 @@ const Billing = {
           <!-- ── Notes ── -->
           ${bill.notes ? `<div class="bill-notes-box">📝 ${H.escHtml(bill.notes)}</div>` : ''}
 
-          <!-- ── Return Policy ── -->
-          <div class="bill-policy-box">
-            <div class="bill-policy-title">RETURN &amp; EXCHANGE POLICY</div>
-            <div class="bill-policy-text">Returns &amp; exchanges accepted within 7 days with original bill. Customised orders are non-returnable.</div>
-          </div>
+
         </div>
 
         <!-- ── Footer ── -->
@@ -1017,7 +1030,7 @@ const Billing = {
         ${CONFIG.categories.map(c => `<option ${c===cat?'selected':''}>${c}</option>`).join('')}
       </select>
       <input class="form-input item-desc" placeholder="Item name (e.g. Black Georgette Suit)" value="${H.escHtml(desc)}">
-      <input class="form-input item-details" placeholder="Colour / Fabric / Design details" value="${H.escHtml(details)}">
+      <input class="form-input item-details" list="fabric-suggestions" placeholder="Colour / Fabric / Design details" value="${H.escHtml(details)}">
       <input class="form-input item-qty"   type="number" min="1" value="${qty}" style="width:100%">
       <input class="form-input item-price" type="number" min="0" placeholder="Price ₹" value="${price}" style="width:100%">
       <div class="item-row-total">${H.fmt((qty||1)*(parseFloat(price)||0))}</div>
@@ -1091,6 +1104,11 @@ Views['new-bill'] = {
                 <datalist id="cust-suggestions">
                   ${Store.getCustomers().map(c => `<option value="${H.escHtml(c.name)}">`).join('')}
                 </datalist>
+                <datalist id="fabric-suggestions">
+                  <option value="Cotton">
+                  <option value="Crepe">
+                  <option value="Silk">
+                </datalist>
               </div>
               <div class="form-group">
                 <label class="form-label">Phone Number</label>
@@ -1126,9 +1144,12 @@ Views['new-bill'] = {
 
         <!-- Items -->
         <div class="bill-section">
-          <div class="bill-section-header">
+          <div class="bill-section-header" style="flex-wrap:wrap;gap:16px;">
             <h3>🛍️ Items Purchased</h3>
-            <button class="btn btn-sm btn-gold" id="add-item-btn" onclick="Billing.addItemRow()">+ Add Item</button>
+            <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:200px;">
+              <input type="text" id="barcode-scanner-input" class="form-input" style="flex:1" placeholder="🔫 Scan Barcode or type ID and hit Enter..." autofocus>
+              <button class="btn btn-sm btn-gold" id="add-item-btn" onclick="Billing.addItemRow()">+ Add Manually</button>
+            </div>
           </div>
           <div class="bill-section-body">
             <div class="items-header">
@@ -1212,6 +1233,69 @@ Views['new-bill'] = {
       document.getElementById('no-items-msg').classList.toggle('hidden', hasItems);
     });
     document.getElementById('no-items-msg').classList.add('hidden'); // hide since we added one row
+    
+    // Barcode Scanner Listener
+    document.getElementById('barcode-scanner-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const sku = e.target.value.trim();
+        if (!sku) return;
+        const p = Store.getProducts().find(prod => prod.id === sku || prod.sku === sku);
+        if (p) {
+          // If there's a completely empty row, remove it first to keep things clean
+          const rows = document.querySelectorAll('.item-row');
+          rows.forEach(r => {
+            const desc = r.querySelector('.item-desc').value;
+            const price = r.querySelector('.item-price').value;
+            if (!desc && !price) r.remove();
+          });
+          
+          Billing.addItemRow(p.category, p.name, p.description || '', 1, p.price);
+          Toast.show(`✓ Added ${p.name}`, 'success');
+          
+          // Show items container msg logic
+          document.getElementById('no-items-msg').classList.add('hidden');
+        } else {
+          Toast.show('⚠️ Item not found in Inventory', 'error');
+        }
+        e.target.value = '';
+        e.target.focus();
+      }
+    });
+    
+    // Customer Auto-fill Logic
+    const nameInput = document.getElementById('cust-name');
+    const phoneInput = document.getElementById('cust-phone');
+    const addrInput = document.getElementById('cust-address');
+    const pinInput = document.getElementById('cust-pincode');
+    
+    if (phoneInput && nameInput) {
+      phoneInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        if (val.length >= 10) {
+          const c = Store.getCustomers().find(c => c.phone === val);
+          if (c && !nameInput.value) {
+            nameInput.value = c.name;
+            if (c.address && addrInput) addrInput.value = c.address;
+            if (c.pincode && pinInput) pinInput.value = c.pincode;
+            Toast.show(`Found customer: ${c.name}`, '');
+          }
+        }
+      });
+
+      nameInput.addEventListener('change', (e) => {
+        const val = e.target.value.trim();
+        if (val) {
+          const c = Store.getCustomers().find(c => c.name.toLowerCase() === val.toLowerCase());
+          if (c && !phoneInput.value) {
+            phoneInput.value = c.phone || '';
+            if (c.address && addrInput && !addrInput.value) addrInput.value = c.address;
+            if (c.pincode && pinInput && !pinInput.value) pinInput.value = c.pincode;
+            Toast.show(`Auto-filled details for ${c.name}`, '');
+          }
+        }
+      });
+    }
   },
 
   selectPayment: (mode) => {
@@ -1351,7 +1435,10 @@ Views['bills'] = {
         </td>
         <td>${H.formatDate(b.date)}</td>
         <td>${b.items.length} item${b.items.length!==1?'s':''}</td>
-        <td style="font-weight:700">${H.fmt(b.total)}</td>
+        <td>
+          <div style="font-weight:700">${H.fmt(b.total)}</div>
+          ${b.payment.due > 0 ? `<div style="font-size:11px; color:var(--red-600); font-weight:600; margin-top:2px">Due: ${H.fmt(b.payment.due)}</div>` : ''}
+        </td>
         <td>${b.payment.mode}</td>
         <td><span class="badge badge-${b.payment.status}">${b.payment.status}</span></td>
         <td>
@@ -1378,22 +1465,35 @@ Views['bills'] = {
     if (!bill) return;
     
     const dueAmt = bill.payment.due;
-    const paymentMode = prompt(`Customer "${bill.customer.name || 'Walk-in'}" is clearing ₹${H.fmtNum(dueAmt)}.\n\nEnter payment mode (Cash / UPI / Card):`, 'Cash');
+    const amountStr = prompt(`Customer "${bill.customer.name || 'Walk-in'}" has ₹${H.fmtNum(dueAmt)} due.\n\nEnter amount they are paying now:`, dueAmt);
+    if (!amountStr) return;
+    
+    const payingAmt = parseFloat(amountStr);
+    if (isNaN(payingAmt) || payingAmt <= 0) return Toast.show('Invalid amount', 'error');
+    if (payingAmt > dueAmt) return Toast.show('Cannot pay more than due amount', 'error');
+
+    const paymentMode = prompt(`Entering payment of ₹${H.fmtNum(payingAmt)}.\n\nPayment mode (Cash / UPI / Card):`, 'Cash');
     if (!paymentMode) return;
+    
+    const newDue = dueAmt - payingAmt;
     
     // Update the bill payment
     const updatedPayment = {
       ...bill.payment,
-      amountPaid: bill.total,
-      due: 0,
-      status: 'paid',
+      amountPaid: bill.payment.amountPaid + payingAmt,
+      due: newDue,
+      status: newDue <= 0 ? 'paid' : 'partial',
       mode: bill.payment.mode + ' + ' + paymentMode.trim(),
-      dueClearedOn: H.today()
+      dueClearedOn: newDue <= 0 ? H.today() : bill.payment.dueClearedOn
     };
     
     // Save the updated bill
     Store.updateBill(id, { payment: updatedPayment });
-    Toast.show(`✅ ₹${H.fmtNum(dueAmt)} due cleared! Sending updated receipt to customer...`, 'success');
+    if (newDue <= 0) {
+      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} fully cleared! Sending updated receipt to customer...`, 'success');
+    } else {
+      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} partially cleared! Remaining due: ₹${H.fmtNum(newDue)}. Sending updated receipt...`, 'success');
+    }
     Views.bills.render();
     
     // Auto-send updated PAID receipt to customer via WhatsApp
@@ -1420,7 +1520,14 @@ Views['inventory'] = {
           <h1>Inventory</h1>
           <p>${products.length} product${products.length!==1?'s':''} · ${Store.lowStockCount()} low stock</p>
         </div>
-        <button class="btn btn-gold" onclick="Views.inventory.openAddModal()">+ Add Product</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="printer-type" class="form-select" style="width:auto; padding:4px 24px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" onchange="localStorage.setItem('printerType', this.value)">
+            <option value="thermal" ${localStorage.getItem('printerType')==='a4'?'':'selected'}>Thermal Printer</option>
+            <option value="a4" ${localStorage.getItem('printerType')==='a4'?'selected':''}>Normal A4 Printer</option>
+          </select>
+          <button class="btn btn-outline" onclick="Views.inventory.printAllBarcodes()">🖨️ Print All Barcodes</button>
+          <button class="btn btn-gold" onclick="Views.inventory.openAddModal()">+ Add Product</button>
+        </div>
       </div>
 
       <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
@@ -1457,7 +1564,10 @@ Views['inventory'] = {
         <div class="product-card">
           ${lowStock && !outStock ? '<div class="product-low-badge">Low Stock</div>' : ''}
           ${outStock ? '<div class="product-low-badge" style="background:var(--red-light);color:var(--red)">Out of Stock</div>' : ''}
-          <div class="product-cat-chip">${p.category}</div>
+          <div style="display:flex;gap:4px;margin-bottom:8px">
+            <div class="product-cat-chip">${p.category}</div>
+            ${p.fabric ? `<div class="product-cat-chip" style="background:var(--cream-200);color:var(--dark-600)">${p.fabric}</div>` : ''}
+          </div>
           <div class="product-name">${H.escHtml(p.name)}</div>
           <div class="product-desc">${H.escHtml(p.description || '')}</div>
           <div class="product-price">${p.price ? H.fmt(p.price) : 'Variable'}</div>
@@ -1467,6 +1577,7 @@ Views['inventory'] = {
           </div>
           <div class="product-actions">
             <button class="btn btn-sm btn-outline" onclick="Views.inventory.openEditModal('${p.id}')">Edit</button>
+            <button class="btn btn-sm btn-outline" onclick="Views.inventory.printBarcode('${p.id}')">🏷️ Barcode</button>
             <button class="btn btn-sm btn-danger" onclick="Views.inventory.deleteProduct('${p.id}')">Delete</button>
           </div>
         </div>`; }).join('');
@@ -1510,11 +1621,20 @@ Views['inventory'] = {
       <label class="form-label">Product Name *</label>
       <input id="prod-name" class="form-input" placeholder="e.g. Georgette Anarkali Set" value="${H.escHtml(p?.name||'')}">
     </div>
-    <div class="form-group">
-      <label class="form-label">Category *</label>
-      <select id="prod-cat" class="form-select">
-        ${CONFIG.categories.map(c => `<option ${p?.category===c?'selected':''}>${c}</option>`).join('')}
-      </select>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Category *</label>
+        <select id="prod-cat" class="form-select">
+          ${CONFIG.categories.map(c => `<option ${p?.category===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fabric</label>
+        <select id="prod-fabric" class="form-select">
+          <option value="">-- Optional --</option>
+          ${CONFIG.fabrics.map(f => `<option ${p?.fabric===f?'selected':''}>${f}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Description</label>
@@ -1533,20 +1653,26 @@ Views['inventory'] = {
     <div class="form-group">
       <label class="form-label">SKU / Code</label>
       <input id="prod-sku" class="form-input" placeholder="e.g. US-001" value="${H.escHtml(p?.sku||'')}">
+    </div>
+    <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" id="prod-shoponly" ${p?.isShopOnly ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--gold-500)">
+      <label for="prod-shoponly" style="font-size: 13px; font-weight: 500; color: var(--dark-700); margin:0;">Shop Exclusive (Do not show on website)</label>
     </div>`,
 
   saveProduct: (editId) => {
     const name  = document.getElementById('prod-name')?.value.trim();
     const cat   = document.getElementById('prod-cat')?.value;
+    const fabric= document.getElementById('prod-fabric')?.value || null;
     const desc  = document.getElementById('prod-desc')?.value.trim();
     const price = parseFloat(document.getElementById('prod-price')?.value) || 0;
     const stock = parseInt(document.getElementById('prod-stock')?.value);
     const sku   = document.getElementById('prod-sku')?.value.trim();
+    const isShopOnly = document.getElementById('prod-shoponly')?.checked;
     if (!name) { Toast.show('⚠️ Product name is required', 'error'); return; }
     const p = {
-      name, category: cat, description: desc, price,
+      name, category: cat, fabric, description: desc, price,
       stock: isNaN(stock) ? null : stock < 0 ? null : stock,
-      sku
+      sku, isShopOnly
     };
     if (editId) { Store.updateProduct(editId, p); Toast.show('✓ Product updated!', 'success'); }
     else { Store.addProduct({ ...p, id: H.id('PROD') }); Toast.show('✓ Product added!', 'success'); }
@@ -1559,6 +1685,139 @@ Views['inventory'] = {
     Store.deleteProduct(id);
     Toast.show('Product deleted.', '');
     Views.inventory.render();
+  },
+
+  printBarcode: (id) => {
+    const p = Store.getProduct(id);
+    if (!p) return;
+    const isA4 = localStorage.getItem('printerType') === 'a4';
+
+    let html = '';
+    if (isA4) {
+      const labelsHTML = Array.from({ length: 65 }).map((_, i) => `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; overflow:hidden;">
+          <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center;">${H.escHtml(p.name)}</div>
+          <svg id="barcode-${i}"></svg>
+          <div style="font-size:9px; font-weight:600;">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+        </div>
+      `).join('');
+      html = `
+        <style>
+          @page { size: A4; margin: 0; }
+          body, html { margin: 0; padding: 0; background: white; }
+          .a4-sheet {
+            display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);
+            width: 210mm; height: 297mm; padding: 10mm 4mm; box-sizing: border-box; page-break-after: always;
+          }
+        </style>
+        <div class="a4-sheet">${labelsHTML}</div>
+      `;
+    } else {
+      html = `
+        <style>
+          @page { size: auto; margin: 0mm; }
+          body, html { margin: 0; padding: 0; background: white; }
+          .label-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box; font-family: sans-serif;
+          }
+          .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+          .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
+        </style>
+        <div class="label-container">
+          <div class="label-title">${H.escHtml(p.name)}</div>
+          <svg id="barcode-single"></svg>
+          <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+        </div>
+      `;
+    }
+
+    const printArea = document.getElementById('print-area');
+    printArea.innerHTML = html;
+    printArea.classList.remove('hidden');
+    
+    if (isA4) {
+      for (let i = 0; i < 65; i++) {
+        try { JsBarcode(`#barcode-${i}`, p.id, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 }); } catch(e) {}
+      }
+    } else {
+      try { JsBarcode('#barcode-single', p.id, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); } catch(e) {}
+    }
+
+    setTimeout(() => {
+      window.print();
+      printArea.innerHTML = '';
+      printArea.classList.add('hidden');
+    }, 500);
+  },
+
+  printAllBarcodes: () => {
+    const products = Store.getProducts();
+    if (!products.length) return Toast.show('No products in inventory', 'error');
+    const isA4 = localStorage.getItem('printerType') === 'a4';
+
+    let html = '';
+    if (isA4) {
+      const chunks = [];
+      for(let i=0; i<products.length; i+=65) chunks.push(products.slice(i, i+65));
+      html = `
+        <style>
+          @page { size: A4; margin: 0; }
+          body, html { margin: 0; padding: 0; background: white; }
+          .a4-sheet {
+            display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);
+            width: 210mm; height: 297mm; padding: 10mm 4mm; box-sizing: border-box; page-break-after: always;
+          }
+        </style>
+      ` + chunks.map((chunk, cIdx) => `
+        <div class="a4-sheet">
+          ${chunk.map((p, i) => `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; overflow:hidden;">
+              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center;">${H.escHtml(p.name)}</div>
+              <svg id="barcode-all-${cIdx * 65 + i}"></svg>
+              <div style="font-size:9px; font-weight:600;">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    } else {
+      html = `
+        <style>
+          @page { size: auto; margin: 0mm; }
+          body, html { margin: 0; padding: 0; background: white; }
+          .label-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box; font-family: sans-serif; page-break-after: always;
+          }
+          .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+          .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
+        </style>
+        ${products.map((p, i) => `
+          <div class="label-container">
+            <div class="label-title">${H.escHtml(p.name)}</div>
+            <svg id="barcode-all-${i}"></svg>
+            <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    const printArea = document.getElementById('print-area');
+    printArea.innerHTML = html;
+    printArea.classList.remove('hidden');
+    
+    products.forEach((p, i) => {
+      try {
+        if(isA4) JsBarcode(`#barcode-all-${i}`, p.id, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 });
+        else JsBarcode(`#barcode-all-${i}`, p.id, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 });
+      } catch(e) {}
+    });
+
+    setTimeout(() => {
+      window.print();
+      printArea.innerHTML = '';
+      printArea.classList.add('hidden');
+    }, 1000);
   }
 };
 

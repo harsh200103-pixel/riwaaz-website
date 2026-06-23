@@ -57,6 +57,11 @@
   ],
   "CATEGORIES": [
     { "id": "all", "label": "All Items" },
+    { "id": "coord", "label": "Co-ord Set" },
+    { "id": "stitched_3piece", "label": "3 Piece Suit" },
+    { "id": "stitched_2piece", "label": "2 Piece Suit" },
+    { "id": "anarkali", "label": "Anarkali" },
+    { "id": "onepiece", "label": "One Piece" },
     { "id": "unstitched", "label": "Unstitched Suits" },
     { "id": "stitched", "label": "Stitched Suits" },
     { "id": "kurtis", "label": "Kurtis" },

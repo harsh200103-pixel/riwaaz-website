@@ -177,3 +177,25 @@
   margin-bottom: 16px;
   color: var(--dark-800);
 }
+
+@media (max-width: 768px) {
+  .filters {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-left: -24px;
+    margin-right: -24px;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+  .filterBtn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}

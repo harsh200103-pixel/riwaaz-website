@@ -28,7 +28,7 @@ export default function ProductDetailPage({ params }) {
 
   // WhatsApp Message Generation
   const waMsg = `Hi! I want to buy the "${suit.name}" (ID: ${suit.id}) listed on your website. Is it available?`;
-  const waLink = `https://wa.me/919827788773?text=${encodeURIComponent(waMsg)}`;
+  const waLink = `https://wa.me/917999629985?text=${encodeURIComponent(waMsg)}`;
 
   return (
     <main className={`container ${styles.detailsContainer}`}>
@@ -53,7 +53,7 @@ export default function ProductDetailPage({ params }) {
                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#DC2626', marginBottom: '8px' }}>🚫 This piece is Sold Out</div>
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>This was a one-of-a-kind piece. Follow us for new arrivals!</p>
               </div>
-              <a href="https://wa.me/919827788773?text=Hi!%20I%20saw%20a%20sold%20out%20piece%20on%20your%20website.%20Do%20you%20have%20something%20similar?" target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ width: '100%' }}>
+              <a href="https://wa.me/917999629985?text=Hi!%20I%20saw%20a%20sold%20out%20piece%20on%20your%20website.%20Do%20you%20have%20something%20similar?" target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ width: '100%' }}>
                 💬 Ask for Similar Pieces
               </a>
             </>
