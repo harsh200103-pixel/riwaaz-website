@@ -1958,38 +1958,33 @@ Views['inventory'] = {
     printArea.innerHTML = html;
     printArea.classList.remove('hidden');
     
-    // Give DOM a split second to mount elements, then draw barcodes
-    setTimeout(() => {
-      if (typeof JsBarcode === 'undefined') {
-        console.error("JsBarcode library is not loaded!");
-        alert("⚠️ Barcode library failed to load. Please check your internet connection.");
-        return;
-      }
-      
-      if (isA4) {
-        for (let i = 0; i < 65; i++) {
-          const el = document.getElementById(`barcode-${i}`);
-          if (el) {
-            try { 
-              JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.0, height: 25, displayValue: true, fontSize: 10, margin: 0 }); 
-            } catch(e) { console.error("Error drawing barcode:", e); }
-          }
-        }
-      } else {
-        const el = document.getElementById('barcode-single');
+    if (typeof JsBarcode === 'undefined') {
+      console.error("JsBarcode library is not loaded!");
+      alert("⚠️ Barcode library failed to load. Please check your internet connection.");
+      return;
+    }
+    
+    if (isA4) {
+      for (let i = 0; i < 65; i++) {
+        const el = document.getElementById(`barcode-${i}`);
         if (el) {
           try { 
-            JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); 
+            JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.0, height: 25, displayValue: true, fontSize: 10, margin: 0 }); 
           } catch(e) { console.error("Error drawing barcode:", e); }
         }
       }
+    } else {
+      const el = document.getElementById('barcode-single');
+      if (el) {
+        try { 
+          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); 
+        } catch(e) { console.error("Error drawing barcode:", e); }
+      }
+    }
 
-      setTimeout(() => {
-        window.print();
-        printArea.innerHTML = '';
-        printArea.classList.add('hidden');
-      }, 300);
-    }, 50);
+    window.print();
+    printArea.innerHTML = '';
+    printArea.classList.add('hidden');
   },
 
   printAllBarcodes: () => {
@@ -2047,31 +2042,26 @@ Views['inventory'] = {
     printArea.innerHTML = html;
     printArea.classList.remove('hidden');
     
-    // Give DOM a split second to mount elements, then draw barcodes
-    setTimeout(() => {
-      if (typeof JsBarcode === 'undefined') {
-        console.error("JsBarcode library is not loaded!");
-        alert("⚠️ Barcode library failed to load. Please check your internet connection.");
-        return;
+    if (typeof JsBarcode === 'undefined') {
+      console.error("JsBarcode library is not loaded!");
+      alert("⚠️ Barcode library failed to load. Please check your internet connection.");
+      return;
+    }
+
+    products.forEach((p, i) => {
+      const barcodeVal = p.sku || p.id;
+      const el = document.getElementById(`barcode-all-${i}`);
+      if (el) {
+        try {
+          if(isA4) JsBarcode(el, barcodeVal, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 });
+          else JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 });
+        } catch(e) { console.error("Error drawing barcode:", e); }
       }
+    });
 
-      products.forEach((p, i) => {
-        const barcodeVal = p.sku || p.id;
-        const el = document.getElementById(`barcode-all-${i}`);
-        if (el) {
-          try {
-            if(isA4) JsBarcode(el, barcodeVal, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 });
-            else JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 });
-          } catch(e) { console.error("Error drawing barcode:", e); }
-        }
-      });
-
-      setTimeout(() => {
-        window.print();
-        printArea.innerHTML = '';
-        printArea.classList.add('hidden');
-      }, 500);
-    }, 50);
+    window.print();
+    printArea.innerHTML = '';
+    printArea.classList.add('hidden');
   }
 };
 
