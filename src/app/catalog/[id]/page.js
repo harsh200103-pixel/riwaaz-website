@@ -1,21 +1,39 @@
-import data from '../../data.json';
-const { SUITS, CATEGORIES } = data;
 import Link from 'next/link';
 import styles from '../catalog.module.css';
 import GalleryViewer from './GalleryViewer';
+import { db } from '../../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-// Generating static params for our mock data
-export function generateStaticParams() {
-  return SUITS.map((suit) => ({
-    id: suit.id,
-  }));
-}
+export const dynamic = 'force-dynamic';
 
-export default function ProductDetailPage({ params }) {
+const CATEGORIES = [
+  { id: 'Stitched Suit', label: 'Stitched Suits' },
+  { id: 'Unstitched Suit', label: 'Unstitched Suits' },
+  { id: 'Co-ord Set', label: 'Co-ord Set' },
+  { id: '3 Piece Suit', label: '3 Piece Suit' },
+  { id: '2 Piece Suit', label: '2 Piece Suit' },
+  { id: 'Anarkali', label: 'Anarkali' },
+  { id: 'One Piece', label: 'One Piece' },
+  { id: 'Rumalla Saheb', label: 'Rumalla Saheb' },
+  { id: 'Kurtis', label: 'Kurtis' },
+  { id: 'Customised', label: 'Customised' }
+];
+
+export default async function ProductDetailPage({ params }) {
   const { id } = params;
-  const suit = SUITS.find(s => s.id === id);
+  
+  let suit = null;
+  try {
+    const docRef = doc(db, 'products', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      suit = docSnap.data();
+    }
+  } catch (error) {
+    console.error("Error fetching suit details:", error);
+  }
 
-  if (!suit) {
+  if (!suit || suit.isShopOnly) {
     return (
       <div className="container" style={{ padding: '100px 0', textAlign: 'center' }}>
         <h2>Suit not found</h2>

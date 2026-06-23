@@ -46,93 +46,218 @@ const H = {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
   },
   escHtml: (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),
-  debounce: (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+  debounce: (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; },
+  compressImage: (file, maxWidth = 800, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+        img.src = e.target.result;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  }
 };
+
+// ════════════════════════════════════════ FIREBASE ════
+const firebaseConfig = {
+  apiKey: "AIzaSyAEEjZaddufzwTxmlnW0TOx4sEUP3Md8YM",
+  authDomain: "rawaaz-2002f.firebaseapp.com",
+  projectId: "rawaaz-2002f",
+  storageBucket: "rawaaz-2002f.firebasestorage.app",
+  messagingSenderId: "204820379209",
+  appId: "1:204820379209:web:fc9b99bae8d437c82cf198",
+  measurementId: "G-7NT96MCV3N"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
 
 // ═══════════════════════════════════════ STORE ═════
 const Store = {
+  data: {
+    bills: [],
+    products: [],
+    customers: [],
+    returns: [],
+    billCounter: 0
+  },
+  
+  init: async () => {
+    return new Promise((resolve) => {
+      let loaded = 0;
+      const checkLoaded = () => { if (++loaded === 5) resolve(); };
+      
+      db.collection('bills').onSnapshot(snap => {
+        Store.data.bills = snap.docs.map(d => d.data()).sort((a,b) => new Date(b.date) - new Date(a.date));
+        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+      });
+      db.collection('products').onSnapshot(snap => {
+        Store.data.products = snap.docs.map(d => d.data());
+        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+      });
+      db.collection('customers').onSnapshot(snap => {
+        Store.data.customers = snap.docs.map(d => d.data());
+        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+      });
+      db.collection('returns').onSnapshot(snap => {
+        Store.data.returns = snap.docs.map(d => d.data());
+        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+      });
+      db.collection('metadata').doc('counters').onSnapshot(snap => {
+        if (snap.exists) {
+          Store.data.billCounter = snap.data().billCounter || 0;
+        } else {
+          db.collection('metadata').doc('counters').set({ billCounter: 0 });
+          Store.data.billCounter = 0;
+        }
+        if (loaded < 5) checkLoaded();
+      });
+    });
+  },
+
+  migrateLocalToFirebase: async () => {
+    const localBills = JSON.parse(localStorage.getItem('rbe_bills') || '[]');
+    const localProducts = JSON.parse(localStorage.getItem('rbe_products') || '[]');
+    const localCustomers = JSON.parse(localStorage.getItem('rbe_customers') || '[]');
+    const localReturns = JSON.parse(localStorage.getItem('rbe_returns') || '[]');
+    const localCounter = parseInt(localStorage.getItem('rbe_bill_counter') || '0');
+    
+    let migrated = false;
+
+    if (localProducts.length > 0 && Store.data.products.length === 0) {
+      console.log('Migrating Products...');
+      for (const p of localProducts) await db.collection('products').doc(p.id).set(p);
+      localStorage.removeItem('rbe_products');
+      migrated = true;
+    }
+    if (localBills.length > 0 && Store.data.bills.length === 0) {
+      console.log('Migrating Bills...');
+      for (const b of localBills) await db.collection('bills').doc(b.id).set(b);
+      localStorage.removeItem('rbe_bills');
+      migrated = true;
+    }
+    if (localCustomers.length > 0 && Store.data.customers.length === 0) {
+      console.log('Migrating Customers...');
+      for (const c of localCustomers) await db.collection('customers').doc(c.id).set(c);
+      localStorage.removeItem('rbe_customers');
+      migrated = true;
+    }
+    if (localReturns.length > 0 && Store.data.returns.length === 0) {
+      console.log('Migrating Returns...');
+      for (const r of localReturns) await db.collection('returns').doc(r.id).set(r);
+      localStorage.removeItem('rbe_returns');
+      migrated = true;
+    }
+    if (localCounter > Store.data.billCounter) {
+      console.log('Migrating Counter...');
+      await db.collection('metadata').doc('counters').set({ billCounter: localCounter });
+      localStorage.removeItem('rbe_bill_counter');
+      migrated = true;
+    }
+    
+    if (migrated) Toast.show('✓ Local data migrated to Cloud!', 'success', 5000);
+  },
+
   // Bills
-  getBills: () => JSON.parse(localStorage.getItem('rbe_bills') || '[]'),
-  saveBills: (bills) => localStorage.setItem('rbe_bills', JSON.stringify(bills)),
+  getBills: () => Store.data.bills,
   addBill: (bill) => {
-    const bills = Store.getBills();
-    bills.unshift(bill);
-    Store.saveBills(bills);
+    db.collection('bills').doc(bill.id).set(bill);
     Store.upsertCustomer(bill.customer, bill.id, bill.total);
   },
   updateBill: (id, changes) => {
-    const bills = Store.getBills().map(b => b.id === id ? { ...b, ...changes } : b);
-    Store.saveBills(bills);
+    db.collection('bills').doc(id).update(changes);
   },
   deleteBill: (id) => {
-    Store.saveBills(Store.getBills().filter(b => b.id !== id));
+    db.collection('bills').doc(id).delete();
   },
-  getBill: (id) => Store.getBills().find(b => b.id === id) || null,
+  getBill: (id) => Store.data.bills.find(b => b.id === id) || null,
   nextBillNumber: () => {
-    const n = parseInt(localStorage.getItem('rbe_bill_counter') || '0') + 1;
-    localStorage.setItem('rbe_bill_counter', String(n));
+    const n = Store.data.billCounter + 1;
+    db.collection('metadata').doc('counters').set({ billCounter: n });
     return 'RBE-' + new Date().getFullYear() + '-' + String(n).padStart(4, '0');
   },
 
   // Products
-  getProducts: () => JSON.parse(localStorage.getItem('rbe_products') || '[]'),
-  saveProducts: (p) => localStorage.setItem('rbe_products', JSON.stringify(p)),
-  addProduct: (p) => { const ps = Store.getProducts(); ps.unshift(p); Store.saveProducts(ps); },
-  updateProduct: (id, changes) => { Store.saveProducts(Store.getProducts().map(p => p.id === id ? { ...p, ...changes } : p)); },
-  deleteProduct: (id) => { Store.saveProducts(Store.getProducts().filter(p => p.id !== id)); },
-  getProduct: (id) => Store.getProducts().find(p => p.id === id) || null,
+  getProducts: () => Store.data.products,
+  addProduct: (p) => db.collection('products').doc(p.id).set(p),
+  updateProduct: (id, changes) => db.collection('products').doc(id).update(changes),
+  deleteProduct: (id) => db.collection('products').doc(id).delete(),
+  getProduct: (id) => Store.data.products.find(p => p.id === id) || null,
   decrementStock: (productId, qty) => {
     const p = Store.getProduct(productId);
-    if (p && p.stock > 0) Store.updateProduct(productId, { stock: Math.max(0, p.stock - qty) });
+    if (p && p.stock > 0) db.collection('products').doc(productId).update({ stock: Math.max(0, p.stock - qty) });
   },
 
   // Customers
-  getCustomers: () => JSON.parse(localStorage.getItem('rbe_customers') || '[]'),
-  saveCustomers: (c) => localStorage.setItem('rbe_customers', JSON.stringify(c)),
+  getCustomers: () => Store.data.customers,
   upsertCustomer: (customer, billId, amount) => {
     if (!customer || !customer.name) return;
-    const customers = Store.getCustomers();
     const phone = (customer.phone || '').trim();
-    let existing = phone ? customers.find(c => c.phone === phone) : customers.find(c => c.name.toLowerCase() === customer.name.toLowerCase());
+    let existing = phone ? Store.data.customers.find(c => c.phone === phone) : Store.data.customers.find(c => c.name.toLowerCase() === customer.name.toLowerCase());
+    
     if (existing) {
-      existing.bills = existing.bills || [];
-      if (!existing.bills.includes(billId)) existing.bills.push(billId);
-      existing.totalSpent = (existing.totalSpent || 0) + (amount || 0);
-      existing.lastVisit = H.today();
-      Store.saveCustomers(customers);
+      const bills = existing.bills || [];
+      if (!bills.includes(billId)) bills.push(billId);
+      db.collection('customers').doc(existing.id).update({
+        bills: bills,
+        totalSpent: (existing.totalSpent || 0) + (amount || 0),
+        lastVisit: H.today()
+      });
     } else {
-      const newCust = {
-        id: H.id('CUST'),
+      const newId = H.id('CUST');
+      db.collection('customers').doc(newId).set({
+        id: newId,
         name: customer.name,
         phone: phone,
         bills: [billId],
         totalSpent: amount || 0,
         joinedDate: H.today(),
         lastVisit: H.today()
-      };
-      customers.unshift(newCust);
-      Store.saveCustomers(customers);
+      });
     }
   },
-  deleteCustomer: (id) => { Store.saveCustomers(Store.getCustomers().filter(c => c.id !== id)); },
+  deleteCustomer: (id) => db.collection('customers').doc(id).delete(),
 
   // Returns
-  getReturns: () => JSON.parse(localStorage.getItem('rbe_returns') || '[]'),
-  saveReturns: (r) => localStorage.setItem('rbe_returns', JSON.stringify(r)),
-  addReturn: (ret) => { const rs = Store.getReturns(); rs.unshift(ret); Store.saveReturns(rs); },
+  getReturns: () => Store.data.returns || [],
+  addReturn: (ret) => db.collection('returns').doc(ret.id || H.id('RET')).set(ret),
 
   // Analytics helpers
   todaySales: () => {
     const today = H.today();
-    return Store.getBills().filter(b => b.date === today && b.status !== 'return')
+    return Store.data.bills.filter(b => b.date === today && b.status !== 'return')
       .reduce((sum, b) => sum + (b.total || 0), 0);
   },
   todayBillCount: () => {
     const today = H.today();
-    return Store.getBills().filter(b => b.date === today).length;
+    return Store.data.bills.filter(b => b.date === today && b.status !== 'return').length;
   },
-  totalSales: () => Store.getBills().filter(b => b.status !== 'return').reduce((s, b) => s + (b.total || 0), 0),
-  lowStockCount: () => Store.getProducts().filter(p => p.stock !== null && p.stock <= CONFIG.lowStockThreshold).length,
+  totalSales: () => Store.data.bills.filter(b => b.status !== 'return').reduce((s, b) => s + (b.total || 0), 0),
+  lowStockCount: () => Store.data.products.filter(p => p.stock !== null && p.stock <= CONFIG.lowStockThreshold).length,
 
   // Cloud Backup & Restore
   cloudBackup: async (token) => {
@@ -1507,6 +1632,71 @@ Views['bills'] = {
 // ══════════════════════════════ VIEW: INVENTORY ══════
 Views['inventory'] = {
   activeCategory: 'All',
+  currentImages: [],
+
+  renderImagePreviews: () => {
+    return (Views.inventory.currentImages || []).map((img, idx) => `
+      <div class="existing-image-preview" data-idx="${idx}" style="position: relative; width: 60px; height: 60px; border: 1px solid var(--cream-200); border-radius: 4px; overflow: hidden; background: #fff;">
+        <img src="${img}" style="width: 100%; height: 100%; object-fit: cover;">
+        <button type="button" class="btn-remove-image" onclick="Views.inventory.removeExistingImage(${idx})" style="position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.6); color: white; border: none; font-size: 10px; cursor: pointer; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">✕</button>
+      </div>
+    `).join('');
+  },
+
+  removeExistingImage: (idx) => {
+    Views.inventory.currentImages.splice(idx, 1);
+    const container = document.getElementById('image-previews-container');
+    if (container) {
+      container.innerHTML = Views.inventory.renderImagePreviews();
+    }
+  },
+
+  handleImageSelection: async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const container = document.getElementById('image-previews-container');
+    const saveBtn = document.getElementById('btn-save-product');
+    
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'image-loading-indicator';
+    loadingDiv.style = 'font-size: 12px; color: var(--gold-500); display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 4px;';
+    loadingDiv.innerHTML = `<span class="spinner" style="width:12px; height:12px; border:2px solid var(--gold-200); border-top-color:var(--gold-500); border-radius:50%; display:inline-block; animation: spin 1s linear infinite;"></span> Compressing images...`;
+    
+    if (!document.getElementById('spin-style')) {
+      const style = document.createElement('style');
+      style.id = 'spin-style';
+      style.innerHTML = '@keyframes spin { to { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+    
+    container.appendChild(loadingDiv);
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Processing...';
+    }
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const dataUrl = await H.compressImage(file, 800, 0.7);
+        Views.inventory.currentImages.push(dataUrl);
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show('⚠️ Error compressing one or more images', 'error');
+    } finally {
+      e.target.value = '';
+      if (loadingDiv) loadingDiv.remove();
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerText = saveBtn.getAttribute('data-action') === 'edit' ? 'Save Changes' : 'Save Product';
+      }
+      if (container) {
+        container.innerHTML = Views.inventory.renderImagePreviews();
+      }
+    }
+  },
 
   render: () => {
     const v = document.getElementById('app-view');
@@ -1560,8 +1750,15 @@ Views['inventory'] = {
       const outStock  = p.stock !== null && p.stock === 0;
       const dotClass  = outStock ? 'out' : lowStock ? 'low' : '';
       const stockLabel = p.stock === null ? 'Flexible stock' : `${p.stock} in stock`;
+      const hasImage = p.images && p.images.length > 0;
+      const imageUrl = hasImage ? p.images[0] : '';
       return `
-        <div class="product-card">
+        <div class="product-card" style="display: flex; flex-direction: column;">
+          ${hasImage ? `
+            <div class="product-card-image" style="width: 100%; height: 140px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--cream-200); background: var(--gray-50);">
+              <img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+          ` : ''}
           ${lowStock && !outStock ? '<div class="product-low-badge">Low Stock</div>' : ''}
           ${outStock ? '<div class="product-low-badge" style="background:var(--red-light);color:var(--red)">Out of Stock</div>' : ''}
           <div style="display:flex;gap:4px;margin-bottom:8px">
@@ -1571,11 +1768,11 @@ Views['inventory'] = {
           <div class="product-name">${H.escHtml(p.name)}</div>
           <div class="product-desc">${H.escHtml(p.description || '')}</div>
           <div class="product-price">${p.price ? H.fmt(p.price) : 'Variable'}</div>
-          <div class="product-stock">
+          <div class="product-stock" style="margin-top: auto; padding-top: 8px;">
             <span class="stock-dot ${dotClass}"></span>
             ${stockLabel}
           </div>
-          <div class="product-actions">
+          <div class="product-actions" style="margin-top: 8px;">
             <button class="btn btn-sm btn-outline" onclick="Views.inventory.openEditModal('${p.id}')">Edit</button>
             <button class="btn btn-sm btn-outline" onclick="Views.inventory.printBarcode('${p.id}')">🏷️ Barcode</button>
             <button class="btn btn-sm btn-danger" onclick="Views.inventory.deleteProduct('${p.id}')">Delete</button>
@@ -1601,19 +1798,21 @@ Views['inventory'] = {
 
   openAddModal: () => {
     Router.go('inventory');
+    Views.inventory.currentImages = [];
     setTimeout(() => {
       Modal.open('Add New Product', Views.inventory.formHtml(null),
         `<button class="btn btn-ghost" onclick="Modal.close()">Cancel</button>
-         <button class="btn btn-gold" onclick="Views.inventory.saveProduct(null)">Save Product</button>`);
+         <button class="btn btn-gold" id="btn-save-product" data-action="add" onclick="Views.inventory.saveProduct(null)">Save Product</button>`);
     }, 100);
   },
 
   openEditModal: (id) => {
     const p = Store.getProduct(id);
     if (!p) return;
+    Views.inventory.currentImages = p.images ? [...p.images] : [];
     Modal.open('Edit Product', Views.inventory.formHtml(p),
       `<button class="btn btn-ghost" onclick="Modal.close()">Cancel</button>
-       <button class="btn btn-gold" onclick="Views.inventory.saveProduct('${id}')">Save Changes</button>`);
+       <button class="btn btn-gold" id="btn-save-product" data-action="edit" onclick="Views.inventory.saveProduct('${id}')">Save Changes</button>`);
   },
 
   formHtml: (p) => `
@@ -1654,7 +1853,14 @@ Views['inventory'] = {
       <label class="form-label">SKU / Code</label>
       <input id="prod-sku" class="form-input" placeholder="e.g. US-001" value="${H.escHtml(p?.sku||'')}">
     </div>
-    <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+    <div class="form-group">
+      <label class="form-label">Product Photos <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(JPEG, compressed automatically)</span></label>
+      <input type="file" id="prod-images" class="form-input" multiple accept="image/*" style="padding: 8px; border: 1px dashed var(--cream-300); background: var(--gray-50); height: auto;" onchange="Views.inventory.handleImageSelection(event)">
+      <div id="image-previews-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+        ${Views.inventory.renderImagePreviews()}
+      </div>
+    </div>
+    <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
       <input type="checkbox" id="prod-shoponly" ${p?.isShopOnly ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--gold-500)">
       <label for="prod-shoponly" style="font-size: 13px; font-weight: 500; color: var(--dark-700); margin:0;">Shop Exclusive (Do not show on website)</label>
     </div>`,
@@ -1668,11 +1874,19 @@ Views['inventory'] = {
     const stock = parseInt(document.getElementById('prod-stock')?.value);
     const sku   = document.getElementById('prod-sku')?.value.trim();
     const isShopOnly = document.getElementById('prod-shoponly')?.checked;
+    
     if (!name) { Toast.show('⚠️ Product name is required', 'error'); return; }
+    
+    const images = Views.inventory.currentImages || [];
+    if (!isShopOnly && images.length === 0) {
+      Toast.show('⚠️ At least one product photo is required for the online store', 'error');
+      return;
+    }
+
     const p = {
       name, category: cat, fabric, description: desc, price,
       stock: isNaN(stock) ? null : stock < 0 ? null : stock,
-      sku, isShopOnly
+      sku, isShopOnly, images
     };
     if (editId) { Store.updateProduct(editId, p); Toast.show('✓ Product updated!', 'success'); }
     else { Store.addProduct({ ...p, id: H.id('PROD') }); Toast.show('✓ Product added!', 'success'); }
@@ -2256,7 +2470,7 @@ Views['returns'] = {
 };
 
 // ═══════════════════════════ EVENT LISTENERS & INIT ══
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
   // Sidebar nav
   document.getElementById('sidebar-nav').addEventListener('click', (e) => {
@@ -2298,8 +2512,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('sidebar-overlay').classList.add('hidden');
   });
 
-  // Seed sample data if first run
-  if (!localStorage.getItem('rbe_seeded')) {
+  // Wait for Firebase to load initial data
+  await Store.init();
+  
+  // Seed sample data if first run and no products in DB
+  if (!localStorage.getItem('rbe_seeded') && Store.data.products.length === 0) {
     const sampleProducts = [
       { id: H.id('PROD'), name: 'Georgette Anarkali Set', category: 'Unstitched Suit', description: 'Heavy georgette with zari border', price: 2800, stock: 12, sku: 'US-001' },
       { id: H.id('PROD'), name: 'Cotton Salwar Kameez', category: 'Unstitched Suit', description: 'Premium cotton, summer collection', price: 1200, stock: 20, sku: 'US-002' },
@@ -2312,6 +2529,9 @@ document.addEventListener('DOMContentLoaded', () => {
     sampleProducts.forEach(p => Store.addProduct(p));
     localStorage.setItem('rbe_seeded', '1');
   }
+
+  // Migrate local to firebase
+  await Store.migrateLocalToFirebase();
 
   // Initial view
   Router.go('dashboard');
