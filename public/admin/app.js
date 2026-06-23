@@ -1860,9 +1860,15 @@ Views['inventory'] = {
         ${Views.inventory.renderImagePreviews()}
       </div>
     </div>
-    <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
-      <input type="checkbox" id="prod-shoponly" ${p?.isShopOnly ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--gold-500)">
-      <label for="prod-shoponly" style="font-size: 13px; font-weight: 500; color: var(--dark-700); margin:0;">Shop Exclusive (Do not show on website)</label>
+    <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="prod-shoponly" ${p?.isShopOnly ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--gold-500)">
+        <label for="prod-shoponly" style="font-size: 13px; font-weight: 500; color: var(--dark-700); margin:0;">Shop Exclusive (Do not show on website)</label>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="prod-soldout" ${p?.soldOut ? 'checked' : ''} style="width:16px;height:16px;accent-color:#DC2626">
+        <label for="prod-soldout" style="font-size: 13px; font-weight: 500; color: #DC2626; margin:0;">Out of Stock / Sold Out (Show "Sold Out" on website)</label>
+      </div>
     </div>`,
 
   saveProduct: (editId) => {
@@ -1874,6 +1880,7 @@ Views['inventory'] = {
     const stock = parseInt(document.getElementById('prod-stock')?.value);
     const sku   = document.getElementById('prod-sku')?.value.trim();
     const isShopOnly = document.getElementById('prod-shoponly')?.checked;
+    const soldOut = document.getElementById('prod-soldout')?.checked || false;
     
     if (!name) { Toast.show('⚠️ Product name is required', 'error'); return; }
     
@@ -1886,10 +1893,10 @@ Views['inventory'] = {
     const p = {
       name, category: cat, fabric, description: desc, price,
       stock: isNaN(stock) ? null : stock < 0 ? null : stock,
-      sku, isShopOnly, images
+      sku, isShopOnly, images, soldOut
     };
     if (editId) { Store.updateProduct(editId, p); Toast.show('✓ Product updated!', 'success'); }
-    else { Store.addProduct({ ...p, id: H.id('PROD') }); Toast.show('✓ Product added!', 'success'); }
+    else { Store.addProduct({ ...p, id: H.id('PROD'), soldOut }); Toast.show('✓ Product added!', 'success'); }
     Modal.close();
     Views.inventory.render();
   },

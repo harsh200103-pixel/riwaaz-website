@@ -1301,9 +1301,19 @@ canvas { max-height: 280px; }
   #print-area {
     display: block !important;
     padding: 0 !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    opacity: 1 !important;
   }
 }
-.print-area { display: none; }
+.print-area {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
 .print-invoice {
   font-family: 'Inter', sans-serif;
   max-width: 700px;
