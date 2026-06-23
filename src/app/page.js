@@ -31,7 +31,7 @@ export default function Home() {
           <Link href="/catalog" className="btn-gold">
             View Collection
           </Link>
-          <a href="https://wa.me/917999629985" target="_blank" rel="noopener noreferrer" className="btn-outline">
+          <a href="https://wa.me/919770496796" target="_blank" rel="noopener noreferrer" className="btn-outline">
             Contact Us
           </a>
         </div>

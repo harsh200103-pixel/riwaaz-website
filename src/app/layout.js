@@ -18,7 +18,7 @@ export default function RootLayout({ children }) {
             <div className="nav-links">
               <Link href="/">Home</Link>
               <Link href="/catalog">Catalog</Link>
-              <a href="https://wa.me/917999629985" target="_blank" rel="noopener noreferrer">Contact</a>
+              <a href="https://wa.me/919770496796" target="_blank" rel="noopener noreferrer">Contact</a>
             </div>
           </div>
         </nav>
@@ -27,7 +27,7 @@ export default function RootLayout({ children }) {
           <div style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '32px', color: 'var(--gold-400)', marginBottom: '12px' }}>Riwaaz</div>
           <div style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold-300)', marginBottom: '24px' }}>by Eshmira</div>
           <p>50/2, Shivam Apartment, Bholaram Ustad Marg, Indore</p>
-          <p style={{ marginTop: '8px' }}>📞 +91 7999629985 &nbsp;|&nbsp; +91 9770496796</p>
+          <p style={{ marginTop: '8px' }}>📞 +91 9770496796</p>
           <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             © {new Date().getFullYear()} Riwaaz by Eshmira. All rights reserved.
           </div>
