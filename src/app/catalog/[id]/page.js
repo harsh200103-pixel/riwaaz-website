@@ -19,6 +19,38 @@ const CATEGORIES = [
   { id: 'Customised', label: 'Customised' }
 ];
 
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  let suit = null;
+  try {
+    const docRef = doc(db, 'products', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      suit = docSnap.data();
+    }
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+  }
+
+  if (!suit) {
+    return {
+      title: 'Suit Not Found',
+    };
+  }
+
+  const imageUrl = suit.images && suit.images.length > 0 ? suit.images[0] : (suit.image || '');
+
+  return {
+    title: `${suit.name} - Riwaaz by Eshmira`,
+    description: suit.description || `Buy ${suit.name} online from Riwaaz by Eshmira.`,
+    openGraph: {
+      title: suit.name,
+      description: suit.description,
+      images: imageUrl ? [{ url: imageUrl }] : [],
+    },
+  };
+}
+
 export default async function ProductDetailPage({ params }) {
   const { id } = await params;
   
@@ -45,7 +77,8 @@ export default async function ProductDetailPage({ params }) {
   const catLabel = CATEGORIES.find(c => c.id === suit.category)?.label || suit.category;
 
   // WhatsApp Message Generation
-  const waMsg = `Hi! I want to buy the "${suit.name}" (ID: ${suit.id}) listed on your website. Is it available?`;
+  const productUrl = `https://riwaaz-website.vercel.app/catalog/${suit.id}`;
+  const waMsg = `Hi! I want to buy the "${suit.name}" (ID: ${suit.id}) listed on your website: ${productUrl}`;
   const waLink = `https://wa.me/917999629985?text=${encodeURIComponent(waMsg)}`;
 
   return (

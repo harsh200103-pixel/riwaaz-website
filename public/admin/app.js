@@ -1905,6 +1905,7 @@ Views['inventory'] = {
     const p = Store.getProduct(id);
     if (!p) return;
     const isA4 = localStorage.getItem('printerType') === 'a4';
+    const barcodeVal = p.sku || p.id;
 
     let html = '';
     if (isA4) {
@@ -1950,19 +1951,38 @@ Views['inventory'] = {
     printArea.innerHTML = html;
     printArea.classList.remove('hidden');
     
-    if (isA4) {
-      for (let i = 0; i < 65; i++) {
-        try { JsBarcode(`#barcode-${i}`, p.id, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 }); } catch(e) {}
-      }
-    } else {
-      try { JsBarcode('#barcode-single', p.id, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); } catch(e) {}
-    }
-
+    // Give DOM a split second to mount elements, then draw barcodes
     setTimeout(() => {
-      window.print();
-      printArea.innerHTML = '';
-      printArea.classList.add('hidden');
-    }, 500);
+      if (typeof JsBarcode === 'undefined') {
+        console.error("JsBarcode library is not loaded!");
+        alert("⚠️ Barcode library failed to load. Please check your internet connection.");
+        return;
+      }
+      
+      if (isA4) {
+        for (let i = 0; i < 65; i++) {
+          const el = document.getElementById(`barcode-${i}`);
+          if (el) {
+            try { 
+              JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.0, height: 25, displayValue: true, fontSize: 10, margin: 0 }); 
+            } catch(e) { console.error("Error drawing barcode:", e); }
+          }
+        }
+      } else {
+        const el = document.getElementById('barcode-single');
+        if (el) {
+          try { 
+            JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); 
+          } catch(e) { console.error("Error drawing barcode:", e); }
+        }
+      }
+
+      setTimeout(() => {
+        window.print();
+        printArea.innerHTML = '';
+        printArea.classList.add('hidden');
+      }, 300);
+    }, 50);
   },
 
   printAllBarcodes: () => {
@@ -2020,18 +2040,31 @@ Views['inventory'] = {
     printArea.innerHTML = html;
     printArea.classList.remove('hidden');
     
-    products.forEach((p, i) => {
-      try {
-        if(isA4) JsBarcode(`#barcode-all-${i}`, p.id, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 });
-        else JsBarcode(`#barcode-all-${i}`, p.id, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 });
-      } catch(e) {}
-    });
-
+    // Give DOM a split second to mount elements, then draw barcodes
     setTimeout(() => {
-      window.print();
-      printArea.innerHTML = '';
-      printArea.classList.add('hidden');
-    }, 1000);
+      if (typeof JsBarcode === 'undefined') {
+        console.error("JsBarcode library is not loaded!");
+        alert("⚠️ Barcode library failed to load. Please check your internet connection.");
+        return;
+      }
+
+      products.forEach((p, i) => {
+        const barcodeVal = p.sku || p.id;
+        const el = document.getElementById(`barcode-all-${i}`);
+        if (el) {
+          try {
+            if(isA4) JsBarcode(el, barcodeVal, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 });
+            else JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 });
+          } catch(e) { console.error("Error drawing barcode:", e); }
+        }
+      });
+
+      setTimeout(() => {
+        window.print();
+        printArea.innerHTML = '';
+        printArea.classList.add('hidden');
+      }, 500);
+    }, 50);
   }
 };
 
