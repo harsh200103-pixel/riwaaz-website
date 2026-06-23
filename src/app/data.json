@@ -1,0 +1,66 @@
+{
+  "SUITS": [
+    {
+      "id": "s1",
+      "name": "Midnight Blue Velvet Suit",
+      "category": "stitched",
+      "price": 8500,
+      "fabric": "Premium Velvet",
+      "description": "A luxurious midnight blue stitched suit with intricate zari work on the neckline and dupatta.",
+      "image": "https://placehold.co/600x800/EAE5DD/9e5b1b?text=Velvet+Suit"
+    },
+    {
+      "id": "s2",
+      "name": "Emerald Green Silk Set",
+      "category": "unstitched",
+      "price": 4200,
+      "fabric": "Pure Silk",
+      "description": "Unstitched pure silk fabric in emerald green, paired with a heavy banarasi dupatta.",
+      "image": "https://placehold.co/600x800/F6F3EF/81481b?text=Silk+Set"
+    },
+    {
+      "id": "s3",
+      "name": "Ivory Chanderi Kurti",
+      "category": "kurtis",
+      "price": 2800,
+      "fabric": "Chanderi Cotton",
+      "description": "Elegant ivory kurti with delicate pearl embroidery, perfect for day events.",
+      "image": "https://placehold.co/600x800/EAE5DD/9e5b1b?text=Chanderi+Kurti"
+    },
+    {
+      "id": "s4",
+      "name": "Royal Golden Rumalla Saheb",
+      "category": "rumalla",
+      "price": 5500,
+      "fabric": "Tissue Silk",
+      "description": "Traditional Rumalla Saheb featuring heavy golden borders and central motif.",
+      "image": "https://placehold.co/600x800/F6F3EF/81481b?text=Rumalla+Saheb"
+    },
+    {
+      "id": "s5",
+      "name": "Rose Pink Custom Lehenga",
+      "category": "custom",
+      "price": 15000,
+      "fabric": "Georgette & Net",
+      "description": "Sample of our bespoke customisation service. Price varies based on design and measurements.",
+      "image": "https://placehold.co/600x800/EAE5DD/9e5b1b?text=Custom+Design"
+    },
+    {
+      "id": "s6",
+      "name": "Maroon Cotton Everyday Suit",
+      "category": "unstitched",
+      "price": 1800,
+      "fabric": "Pure Cotton",
+      "description": "Breathable and soft unstitched cotton suit ideal for daily wear.",
+      "image": "https://placehold.co/600x800/F6F3EF/81481b?text=Cotton+Suit"
+    }
+  ],
+  "CATEGORIES": [
+    { "id": "all", "label": "All Items" },
+    { "id": "unstitched", "label": "Unstitched Suits" },
+    { "id": "stitched", "label": "Stitched Suits" },
+    { "id": "kurtis", "label": "Kurtis" },
+    { "id": "rumalla", "label": "Rumalla Saheb" },
+    { "id": "custom", "label": "Customised" }
+  ]
+}

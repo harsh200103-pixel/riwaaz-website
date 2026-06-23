@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Riwaaz by Eshmira — Billing Software</title>
+  <meta name="description" content="Premium boutique billing & management for Riwaaz by Eshmira, Indore" />
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-wrap">
+        <svg class="sidebar-logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <text x="4" y="52" font-family="Cormorant Garamond, serif" font-size="56" font-weight="700" fill="#C9A458">R</text>
+          <circle cx="48" cy="10" r="3" fill="#C9A458" opacity="0.6"/>
+          <ellipse cx="52" cy="16" rx="2" ry="4" fill="#C9A458" opacity="0.5" transform="rotate(-20 52 16)"/>
+          <ellipse cx="56" cy="22" rx="1.5" ry="3" fill="#C9A458" opacity="0.4" transform="rotate(-30 56 22)"/>
+          <line x1="48" y1="10" x2="38" y2="28" stroke="#C9A458" stroke-width="1" opacity="0.4"/>
+        </svg>
+        <div class="sidebar-brand">
+          <span class="brand-main">Riwaaz</span>
+          <span class="brand-sub">by Eshmira</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <a href="#" class="nav-item active" data-view="dashboard">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+        </span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="#" class="nav-item nav-primary" data-view="new-bill">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd"/></svg>
+        </span>
+        <span class="nav-label">New Bill</span>
+        <span class="nav-pill">★</span>
+      </a>
+      <a href="#" class="nav-item" data-view="bills">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+        </span>
+        <span class="nav-label">All Bills</span>
+      </a>
+      <a href="#" class="nav-item" data-view="inventory">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+        </span>
+        <span class="nav-label">Inventory</span>
+      </a>
+      <a href="#" class="nav-item" data-view="customers">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z"/></svg>
+        </span>
+        <span class="nav-label">Customers</span>
+      </a>
+      <a href="#" class="nav-item" data-view="reports">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+        </span>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a href="#" class="nav-item" data-view="returns">
+        <span class="nav-icon">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        </span>
+        <span class="nav-label">Returns</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sf-address">
+        <div class="sf-line">📍 Bholaram Ustad Marg, Indore</div>
+        <div class="sf-line">📞 9827788773</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════ MOBILE TOPBAR ═══ -->
+  <header class="mobile-topbar" id="mobile-topbar">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="mobile-brand">Riwaaz <em>by Eshmira</em></div>
+    <button class="mobile-new-bill-btn" id="mobile-new-bill">✦</button>
+  </header>
+
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+
+  <!-- ═══════════════════════════════ MAIN CONTENT ════ -->
+  <main class="main-content" id="main-content">
+    <div id="app-view" class="app-view">
+      <!-- Views rendered here by JS -->
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════ MODAL ════ -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal" id="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">Modal</h2>
+        <button class="modal-close-btn" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer hidden" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════ BILL SHARE MODAL ════ -->
+  <div class="modal-overlay hidden" id="share-modal-overlay">
+    <div class="modal modal-wide" id="share-modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">📱 Digital Bill Ready!</h2>
+        <button class="modal-close-btn" id="share-modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="share-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ TOAST ════ -->
+  <div class="toast hidden" id="toast-notification"></div>
+
+  <!-- ═════════════════════════════════ PRINT FRAME ════ -->
+  <div class="print-area hidden" id="print-area"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="window.Chart=null"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="window.jspdf=null"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" onerror="window.html2canvas=null"></script>
+  <script src="app.js"></script>
+</body>
+</html>
