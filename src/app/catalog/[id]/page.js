@@ -20,7 +20,7 @@ const CATEGORIES = [
 ];
 
 export default async function ProductDetailPage({ params }) {
-  const { id } = params;
+  const { id } = await params;
   
   let suit = null;
   try {
