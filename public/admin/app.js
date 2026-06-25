@@ -1982,9 +1982,10 @@ Views['inventory'] = {
       }
     }
 
-    window.print();
-    printArea.innerHTML = '';
-    printArea.classList.add('hidden');
+    setTimeout(() => {
+      window.print();
+      printArea.classList.add('hidden');
+    }, 50);
   },
 
   printAllBarcodes: () => {
@@ -2059,9 +2060,10 @@ Views['inventory'] = {
       }
     });
 
-    window.print();
-    printArea.innerHTML = '';
-    printArea.classList.add('hidden');
+    setTimeout(() => {
+      window.print();
+      printArea.classList.add('hidden');
+    }, 100);
   }
 };
 
