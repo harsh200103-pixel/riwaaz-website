@@ -1924,49 +1924,77 @@ Views['inventory'] = {
         </div>
       `).join('');
       html = `
-        <style>
-          @page { size: A4; margin: 0; }
-          body, html { margin: 0; padding: 0; background: white; }
-          .a4-sheet {
-            display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);
-            width: 210mm; height: 297mm; padding: 10mm 4mm; box-sizing: border-box; page-break-after: always;
-          }
-        </style>
-        <div class="a4-sheet">${labelsHTML}</div>
+        <html>
+        <head>
+          <style>
+            @page { size: A4; margin: 0; }
+            body, html { margin: 0; padding: 0; background: white; font-family: sans-serif; }
+            .a4-sheet {
+              display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);
+              width: 210mm; height: 297mm; padding: 10mm 4mm; box-sizing: border-box; page-break-after: always;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="a4-sheet">${labelsHTML}</div>
+        </body>
+        </html>
       `;
     } else {
       html = `
-        <style>
-          @page { size: auto; margin: 0mm; }
-          body, html { margin: 0; padding: 0; background: white; }
-          .label-container {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box; font-family: sans-serif;
-          }
-          .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
-          .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
-        </style>
-        <div class="label-container">
-          <div class="label-title">${H.escHtml(p.name)}</div>
-          <svg id="barcode-single"></svg>
-          <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
-        </div>
+        <html>
+        <head>
+          <style>
+            @page { size: auto; margin: 0mm; }
+            body, html { margin: 0; padding: 0; background: white; font-family: sans-serif; }
+            .label-container {
+              display: flex; flex-direction: column; align-items: center; justify-content: center;
+              width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box;
+            }
+            .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+            .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <div class="label-title">${H.escHtml(p.name)}</div>
+            <svg id="barcode-single"></svg>
+            <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+          </div>
+        </body>
+        </html>
       `;
     }
 
-    const printArea = document.getElementById('print-area');
-    printArea.innerHTML = html;
-    printArea.classList.remove('hidden');
-    
+    // 1. Create temporary iframe
+    let iframe = document.getElementById('print-iframe');
+    if (iframe) iframe.remove();
+    iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    document.body.appendChild(iframe);
+
+    // 2. Write HTML content
+    const iframeDoc = iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+
+    // 3. Generate barcodes inside the iframe document
     if (typeof JsBarcode === 'undefined') {
       console.error("JsBarcode library is not loaded!");
       alert("⚠️ Barcode library failed to load. Please check your internet connection.");
       return;
     }
-    
+
     if (isA4) {
       for (let i = 0; i < 65; i++) {
-        const el = document.getElementById(`barcode-${i}`);
+        const el = iframeDoc.getElementById(`barcode-${i}`);
         if (el) {
           try { 
             JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.0, height: 25, displayValue: true, fontSize: 10, margin: 0 }); 
@@ -1974,7 +2002,7 @@ Views['inventory'] = {
         }
       }
     } else {
-      const el = document.getElementById('barcode-single');
+      const el = iframeDoc.getElementById('barcode-single');
       if (el) {
         try { 
           JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); 
@@ -1982,9 +2010,10 @@ Views['inventory'] = {
       }
     }
 
+    // 4. Trigger print
+    iframe.contentWindow.focus();
     setTimeout(() => {
-      window.print();
-      printArea.classList.add('hidden');
+      iframe.contentWindow.print();
     }, 50);
   },
 
@@ -1998,51 +2027,80 @@ Views['inventory'] = {
       const chunks = [];
       for(let i=0; i<products.length; i+=65) chunks.push(products.slice(i, i+65));
       html = `
-        <style>
-          @page { size: A4; margin: 0; }
-          body, html { margin: 0; padding: 0; background: white; }
-          .a4-sheet {
-            display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);
-            width: 210mm; height: 297mm; padding: 10mm 4mm; box-sizing: border-box; page-break-after: always;
-          }
-        </style>
-      ` + chunks.map((chunk, cIdx) => `
-        <div class="a4-sheet">
-          ${chunk.map((p, i) => `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; overflow:hidden;">
-              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center;">${H.escHtml(p.name)}</div>
-              <svg id="barcode-all-${cIdx * 65 + i}"></svg>
-              <div style="font-size:9px; font-weight:600;">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+        <html>
+        <head>
+          <style>
+            @page { size: A4; margin: 0; }
+            body, html { margin: 0; padding: 0; background: white; font-family: sans-serif; }
+            .a4-sheet {
+              display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);
+              width: 210mm; height: 297mm; padding: 10mm 4mm; box-sizing: border-box; page-break-after: always;
+            }
+          </style>
+        </head>
+        <body>
+          ` + chunks.map((chunk, cIdx) => `
+            <div class="a4-sheet">
+              ${chunk.map((p, i) => `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; overflow:hidden;">
+                  <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center;">${H.escHtml(p.name)}</div>
+                  <svg id="barcode-all-${cIdx * 65 + i}"></svg>
+                  <div style="font-size:9px; font-weight:600;">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+                </div>
+              `).join('')}
             </div>
-          `).join('')}
-        </div>
-      `).join('');
+          `).join('') + `
+        </body>
+        </html>
+      `;
     } else {
       html = `
-        <style>
-          @page { size: auto; margin: 0mm; }
-          body, html { margin: 0; padding: 0; background: white; }
-          .label-container {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box; font-family: sans-serif; page-break-after: always;
-          }
-          .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
-          .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
-        </style>
-        ${products.map((p, i) => `
-          <div class="label-container">
-            <div class="label-title">${H.escHtml(p.name)}</div>
-            <svg id="barcode-all-${i}"></svg>
-            <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
-          </div>
-        `).join('')}
+        <html>
+        <head>
+          <style>
+            @page { size: auto; margin: 0mm; }
+            body, html { margin: 0; padding: 0; background: white; font-family: sans-serif; page-break-after: always; }
+            .label-container {
+              display: flex; flex-direction: column; align-items: center; justify-content: center;
+              width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box;
+            }
+            .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+            .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
+          </style>
+        </head>
+        <body>
+          ${products.map((p, i) => `
+            <div class="label-container">
+              <div class="label-title">${H.escHtml(p.name)}</div>
+              <svg id="barcode-all-${i}"></svg>
+              <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+            </div>
+          `).join('')}
+        </body>
+        </html>
       `;
     }
 
-    const printArea = document.getElementById('print-area');
-    printArea.innerHTML = html;
-    printArea.classList.remove('hidden');
-    
+    // 1. Create temporary iframe
+    let iframe = document.getElementById('print-iframe');
+    if (iframe) iframe.remove();
+    iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    document.body.appendChild(iframe);
+
+    // 2. Write HTML content
+    const iframeDoc = iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+
+    // 3. Generate barcodes inside the iframe document
     if (typeof JsBarcode === 'undefined') {
       console.error("JsBarcode library is not loaded!");
       alert("⚠️ Barcode library failed to load. Please check your internet connection.");
@@ -2051,7 +2109,7 @@ Views['inventory'] = {
 
     products.forEach((p, i) => {
       const barcodeVal = p.sku || p.id;
-      const el = document.getElementById(`barcode-all-${i}`);
+      const el = iframeDoc.getElementById(`barcode-all-${i}`);
       if (el) {
         try {
           if(isA4) JsBarcode(el, barcodeVal, { format: "CODE128", width: 1, height: 25, displayValue: true, fontSize: 10, margin: 0 });
@@ -2060,9 +2118,10 @@ Views['inventory'] = {
       }
     });
 
+    // 4. Trigger print
+    iframe.contentWindow.focus();
     setTimeout(() => {
-      window.print();
-      printArea.classList.add('hidden');
+      iframe.contentWindow.print();
     }, 100);
   }
 };
