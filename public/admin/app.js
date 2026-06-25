@@ -1871,7 +1871,7 @@ Views['inventory'] = {
       </div>
     </div>`,
 
-  saveProduct: (editId) => {
+  saveProduct: async (editId) => {
     const name  = document.getElementById('prod-name')?.value.trim();
     const cat   = document.getElementById('prod-cat')?.value;
     const fabric= document.getElementById('prod-fabric')?.value || null;
@@ -1895,17 +1895,48 @@ Views['inventory'] = {
       stock: isNaN(stock) ? null : stock < 0 ? null : stock,
       sku, isShopOnly, images, soldOut
     };
-    if (editId) { Store.updateProduct(editId, p); Toast.show('✓ Product updated!', 'success'); }
-    else { Store.addProduct({ ...p, id: H.id('PROD'), soldOut }); Toast.show('✓ Product added!', 'success'); }
-    Modal.close();
-    Views.inventory.render();
+
+    const saveBtn = document.getElementById('btn-save-product');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Saving to Cloud...';
+    }
+
+    try {
+      if (editId) {
+        await Store.updateProduct(editId, p);
+        Toast.show('✓ Product updated!', 'success');
+      } else {
+        await Store.addProduct({ ...p, id: H.id('PROD'), soldOut });
+        Toast.show('✓ Product added!', 'success');
+      }
+      Modal.close();
+      Views.inventory.render();
+    } catch (err) {
+      console.error("Firestore Save Error:", err);
+      if (err.message && err.message.includes('exceeds maximum size')) {
+        Toast.show('⚠️ Error: Product photos size exceeds the database limit. Try uploading fewer or smaller images.', 'error', 6000);
+      } else {
+        Toast.show(`⚠️ Save failed: ${err.message || 'Unknown error'}`, 'error');
+      }
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerText = editId ? 'Save Changes' : 'Save Product';
+      }
+    }
   },
 
-  deleteProduct: (id) => {
+  deleteProduct: async (id) => {
     if (!confirm('Delete this product?')) return;
-    Store.deleteProduct(id);
-    Toast.show('Product deleted.', '');
-    Views.inventory.render();
+    try {
+      await Store.deleteProduct(id);
+      Toast.show('Product deleted.', 'success');
+      Views.inventory.render();
+    } catch (err) {
+      console.error("Firestore Delete Error:", err);
+      Toast.show(`⚠️ Delete failed: ${err.message || 'Unknown error'}`, 'error');
+    }
   },
 
   printBarcode: (id) => {
