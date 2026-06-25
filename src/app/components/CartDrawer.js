@@ -7,7 +7,6 @@ export default function CartDrawer() {
     cartItems,
     isCartOpen,
     closeCart,
-    updateQuantity,
     removeFromCart,
     cartCount,
     cartTotal,
@@ -27,7 +26,6 @@ export default function CartDrawer() {
       if (item.selectedSize) {
         message += `   - Size: ${item.selectedSize}\n`;
       }
-      message += `   - Qty: ${item.quantity}\n`;
       message += `   - Link: ${productUrl}\n\n`;
     });
 
@@ -79,20 +77,7 @@ export default function CartDrawer() {
                     <div className="cart-item-price">
                       ₹{item.price.toLocaleString('en-IN')}
                     </div>
-                    <div className="cart-item-actions">
-                      <div className="qty-selector">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.selectedSize, item.quantity - 1)}
-                        >
-                          -
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.selectedSize, item.quantity + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
+                    <div className="cart-item-actions" style={{ justifyContent: 'flex-end' }}>
                       <button
                         className="cart-item-remove"
                         onClick={() => removeFromCart(item.id, item.selectedSize)}

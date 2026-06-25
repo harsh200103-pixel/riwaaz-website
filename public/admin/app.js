@@ -1846,7 +1846,7 @@ Views['inventory'] = {
       </div>
       <div class="form-group">
         <label class="form-label">Stock Quantity <span style="font-weight:400;color:var(--text-light)">(-1 = not tracked)</span></label>
-        <input id="prod-stock" class="form-input" type="number" min="-1" placeholder="e.g. 10" value="${p?.stock !== undefined ? p.stock : ''}">
+        <input id="prod-stock" class="form-input" type="number" min="-1" placeholder="e.g. 10" value="${p?.stock !== undefined ? p.stock : '1'}">
       </div>
     </div>
     <div class="form-group">

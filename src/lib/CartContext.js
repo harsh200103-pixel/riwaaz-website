@@ -36,9 +36,7 @@ export function CartProvider({ children }) {
       );
 
       if (existingIdx > -1) {
-        const newItems = [...prevItems];
-        newItems[existingIdx].quantity += 1;
-        return newItems;
+        return prevItems; // Already in cart, do nothing
       }
 
       // Format image URL fallback
@@ -73,20 +71,6 @@ export function CartProvider({ children }) {
     );
   };
 
-  const updateQuantity = (productId, selectedSize = '', newQty) => {
-    if (newQty <= 0) {
-      removeFromCart(productId, selectedSize);
-      return;
-    }
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === productId && item.selectedSize === selectedSize
-          ? { ...item, quantity: newQty }
-          : item
-      )
-    );
-  };
-
   const clearCart = () => {
     setCartItems([]);
   };
@@ -104,7 +88,6 @@ export function CartProvider({ children }) {
         isCartOpen,
         addToCart,
         removeFromCart,
-        updateQuantity,
         clearCart,
         openCart,
         closeCart,
