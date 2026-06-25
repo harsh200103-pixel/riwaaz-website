@@ -1679,7 +1679,7 @@ Views['inventory'] = {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const dataUrl = await H.compressImage(file, 800, 0.7);
+        const dataUrl = await H.compressImage(file, 600, 0.5);
         Views.inventory.currentImages.push(dataUrl);
       }
     } catch (err) {
