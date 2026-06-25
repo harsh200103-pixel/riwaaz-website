@@ -3,6 +3,7 @@ import styles from '../catalog.module.css';
 import GalleryViewer from './GalleryViewer';
 import { db } from '../../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import AddToCartButton from './AddToCartButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,12 +112,15 @@ export default async function ProductDetailPage({ params }) {
           ) : (
             <>
               <div className={styles.actionTitle}>Love this piece?</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
-                We provide personal consultations for all our outfits to ensure the perfect fit and quality.
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>
+                Add it to your cart to purchase multiple items, or inquire directly on WhatsApp.
               </p>
-              <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-gold" style={{ width: '100%' }}>
-                💬 Buy on WhatsApp
-              </a>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <AddToCartButton product={suit} />
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ width: '100%', border: '1px solid var(--gold-300)' }}>
+                  💬 Buy Directly on WhatsApp
+                </a>
+              </div>
             </>
           )}
         </div>
