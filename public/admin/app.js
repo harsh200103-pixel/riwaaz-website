@@ -543,9 +543,12 @@ _For queries: ${CONFIG.phone1}_`;
           <button class="btn btn-copy btn-full" onclick="Share.copyText(Store.getBill('${bill.id}'))">
             📋 Copy Bill Text
           </button>
-          <div style="height:1px;background:var(--cream-200);margin:6px 0"></div>
-          <button class="btn btn-print btn-full" onclick="Print.bill(Store.getBill('${bill.id}'))">
-            🖨️ Print Invoice
+           <div style="height:1px;background:var(--cream-200);margin:6px 0"></div>
+          <button class="btn btn-print btn-full" style="background:#4A3020;color:#fff" onclick="localStorage.setItem('printerType', 'a4'); Print.bill(Store.getBill('${bill.id}'))">
+            🖨️ Print A4 Invoice
+          </button>
+          <button class="btn btn-print btn-full" style="background:#B8860B;color:#fff;margin-top:8px" onclick="localStorage.setItem('printerType', 'thermal'); Print.bill(Store.getBill('${bill.id}'))">
+            🧾 Print Thermal Receipt
           </button>
           <button class="btn btn-ghost btn-full" onclick="ShareModal.close()">Done</button>
         </div>
@@ -557,73 +560,152 @@ _For queries: ${CONFIG.phone1}_`;
 // ══════════════════════════════════════ PRINT ══════
 const Print = {
   buildHtml: (bill) => {
-    const items = bill.items.map((it, i) => `
-      <tr>
-        <td>${i+1}</td>
-        <td>${H.escHtml(it.category)}</td>
-        <td>${H.escHtml(it.description || '—')}</td>
-        <td style="text-align:center">${it.qty}</td>
-        <td style="text-align:right">${H.fmt(it.price)}</td>
-        <td style="text-align:right;font-weight:600">${H.fmt(it.total)}</td>
-      </tr>`).join('');
+    const isA4 = localStorage.getItem('printerType') === 'a4';
+    if (isA4) {
+      const items = bill.items.map((it, i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td>${H.escHtml(it.category)}</td>
+          <td>${H.escHtml(it.description || '—')}</td>
+          <td style="text-align:center">${it.qty}</td>
+          <td style="text-align:right">${H.fmt(it.price)}</td>
+          <td style="text-align:right;font-weight:600">${H.fmt(it.total)}</td>
+        </tr>`).join('');
 
-    const payLine = bill.payment.status === 'paid'
-      ? `<span style="color:#27AE60;font-weight:700">✓ PAID</span>`
-      : `<span style="color:#E67E22">⏳ Due: ${H.fmt(bill.payment.due)}</span>`;
+      const payLine = bill.payment.status === 'paid'
+        ? `<span style="color:#27AE60;font-weight:700">✓ PAID</span>`
+        : `<span style="color:#E67E22">⏳ Due: ${H.fmt(bill.payment.due)}</span>`;
 
-    return `
-      <div class="print-invoice">
-        <div class="pi-header">
-          <div>
-            <div class="pi-shop-name">Riwaaz</div>
-            <div class="pi-tagline">by Eshmira</div>
+      return `
+        <div class="print-invoice">
+          <div class="pi-header">
+            <div>
+              <div class="pi-shop-name">Riwaaz</div>
+              <div class="pi-tagline">by Eshmira</div>
+            </div>
+            <div class="pi-address">
+              ${CONFIG.address}<br/>
+              Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
+            </div>
           </div>
-          <div class="pi-address">
-            ${CONFIG.address}<br/>
-            Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
+          <div class="pi-meta">
+            <div>
+              <div class="pi-bill-no">Bill #: ${bill.billNumber}</div>
+              <div style="font-size:13px;color:#666;margin-top:4px">Date: ${H.formatDate(bill.date)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:14px;font-weight:600">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</div>
+              ${bill.customer.phone ? `<div style="font-size:12px;color:#666">${bill.customer.phone}</div>` : ''}
+            </div>
+          </div>
+          ${bill.isOnline ? `
+          <div style="margin-bottom:20px;padding:12px;background:#f9f9f9;border:1px solid #eee;border-radius:6px;font-size:13px;line-height:1.5">
+            <div style="font-weight:700;margin-bottom:4px;color:#333;text-transform:uppercase;font-size:11px;letter-spacing:0.05em">📦 Shipping Details</div>
+            <div><strong>Address:</strong> ${H.escHtml(bill.customer.address)}</div>
+            <div><strong>Pincode:</strong> ${H.escHtml(bill.customer.pincode)}</div>
+            <div><strong>Alt Phone:</strong> ${H.escHtml(bill.customer.altPhone || '—')}</div>
+          </div>
+          ` : ''}
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Category</th><th>Description</th>
+                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Price</th>
+                <th style="text-align:right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>${items}</tbody>
+          </table>
+          <div class="pi-totals">
+            <div class="pi-total-row"><span>Subtotal</span><span>${H.fmt(bill.subtotal)}</span></div>
+            ${bill.discount > 0 ? `<div class="pi-total-row"><span>Discount</span><span>- ${H.fmt(bill.discount)}</span></div>` : ''}
+            <div class="pi-total-row pi-grand"><span>TOTAL</span><span>${H.fmt(bill.total)}</span></div>
+            <div style="font-size:12px;color:#888;margin-top:8px">Payment: ${bill.payment.mode} | ${payLine}</div>
+          </div>
+          <div class="pi-footer">
+            <div class="thanks">Thank you for shopping with us!</div>
+            <div style="margin-top:4px">Riwaaz by Eshmira | ${CONFIG.address}</div>
+            <div>Tel: ${CONFIG.phone1} | ${CONFIG.phone2}</div>
+          </div>
+        </div>`;
+    } else {
+      // Thermal printer layout (72mm/80mm receipt style)
+      const payLine = bill.payment.status === 'paid'
+        ? `PAID`
+        : `Due: ₹${bill.payment.due.toLocaleString('en-IN')}`;
+
+      return `
+        <style>
+          @media print {
+            body { margin: 0; padding: 0; background: white; }
+            .print-receipt-container { width: 100% !important; padding: 0 !important; }
+          }
+        </style>
+        <div class="print-receipt-container" style="font-family:sans-serif; width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; color: #000; background: #fff;">
+          <div style="text-align:center; margin-bottom:10px;">
+            <div style="font-size:20px; font-weight:800; text-transform:uppercase; letter-spacing:1px; line-height:1.2;">Riwaaz</div>
+            <div style="font-size:9px; text-transform:uppercase; letter-spacing:2px; margin-top:-2px;">by Eshmira</div>
+            <div style="font-size:9px; margin-top:4px; line-height:1.3; color:#333">
+              ${CONFIG.address}<br/>
+              Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
+            </div>
+          </div>
+          
+          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+          
+          <div style="font-size:9px; line-height:1.4; margin-bottom:6px;">
+            <div><strong>Bill #:</strong> ${bill.billNumber}</div>
+            <div><strong>Date:</strong> ${H.formatDate(bill.date)}</div>
+            <div><strong>Customer:</strong> ${H.escHtml(bill.customer.name || 'Walk-in Customer')}</div>
+            ${bill.customer.phone ? `<div><strong>Phone:</strong> ${bill.customer.phone}</div>` : ''}
+            ${bill.isOnline ? `<div><strong>Shipping:</strong> ${H.escHtml(bill.customer.address)} (PIN: ${H.escHtml(bill.customer.pincode)})</div>` : ''}
+          </div>
+          
+          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+          
+          <table style="width:100%; border-collapse:collapse; font-size:9px; line-height:1.3; margin-bottom:6px;">
+            <thead>
+              <tr style="border-bottom:1px dashed #000;">
+                <th style="text-align:left; padding:3px 0; font-weight:700;">Item</th>
+                <th style="text-align:center; padding:3px 0; font-weight:700; width:25px;">Qty</th>
+                <th style="text-align:right; padding:3px 0; font-weight:700; width:55px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bill.items.map(it => `
+                <tr style="border-bottom:1px dotted #ccc;">
+                  <td style="padding:4px 0; word-break:break-word; max-width:110px;">
+                    <div style="font-weight:600;">${H.escHtml(it.description || it.category)}</div>
+                    <div style="font-size:8px; color:#555;">${H.escHtml(it.category)} @ ₹${it.price.toLocaleString('en-IN')}</div>
+                  </td>
+                  <td style="text-align:center; padding:4px 0; vertical-align:top;">${it.qty}</td>
+                  <td style="text-align:right; padding:4px 0; vertical-align:top; font-weight:600;">₹${it.total.toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+          
+          <div style="font-size:9px; line-height:1.4; margin-left:auto; width:100%; max-width:160px; text-align:right;">
+            <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹${bill.subtotal.toLocaleString('en-IN')}</span></div>
+            ${bill.discount > 0 ? `<div style="display:flex; justify-content:space-between;"><span>Discount:</span><span>- ₹${bill.discount.toLocaleString('en-IN')}</span></div>` : ''}
+            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; border-top:1px dotted #000; padding-top:3px; margin-top:3px;">
+              <span>GRAND TOTAL:</span><span>₹${bill.total.toLocaleString('en-IN')}</span>
+            </div>
+            <div style="font-size:8px; color:#555; margin-top:3px;">Payment: ${bill.payment.mode} | ${payLine}</div>
+          </div>
+          
+          <div style="border-top:1px dashed #000; margin:6px 0; margin-top:10px;"></div>
+          
+          <div style="text-align:center; font-size:8px; line-height:1.3; margin-top:6px; color:#333">
+            <div style="font-weight:700; margin-bottom:2px; font-size:10px;">Thank You!</div>
+            <div>Visit us again at Riwaaz by Eshmira</div>
           </div>
         </div>
-        <div class="pi-meta">
-          <div>
-            <div class="pi-bill-no">Bill #: ${bill.billNumber}</div>
-            <div style="font-size:13px;color:#666;margin-top:4px">Date: ${H.formatDate(bill.date)}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:14px;font-weight:600">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</div>
-            ${bill.customer.phone ? `<div style="font-size:12px;color:#666">${bill.customer.phone}</div>` : ''}
-          </div>
-        </div>
-        ${bill.isOnline ? `
-        <div style="margin-bottom:20px;padding:12px;background:#f9f9f9;border:1px solid #eee;border-radius:6px;font-size:13px;line-height:1.5">
-          <div style="font-weight:700;margin-bottom:4px;color:#333;text-transform:uppercase;font-size:11px;letter-spacing:0.05em">📦 Shipping Details</div>
-          <div><strong>Address:</strong> ${H.escHtml(bill.customer.address)}</div>
-          <div><strong>Pincode:</strong> ${H.escHtml(bill.customer.pincode)}</div>
-          <div><strong>Alt Phone:</strong> ${H.escHtml(bill.customer.altPhone || '—')}</div>
-        </div>
-        ` : ''}
-        <table>
-          <thead>
-            <tr>
-              <th>#</th><th>Category</th><th>Description</th>
-              <th style="text-align:center">Qty</th>
-              <th style="text-align:right">Price</th>
-              <th style="text-align:right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>${items}</tbody>
-        </table>
-        <div class="pi-totals">
-          <div class="pi-total-row"><span>Subtotal</span><span>${H.fmt(bill.subtotal)}</span></div>
-          ${bill.discount > 0 ? `<div class="pi-total-row"><span>Discount</span><span>- ${H.fmt(bill.discount)}</span></div>` : ''}
-          <div class="pi-total-row pi-grand"><span>TOTAL</span><span>${H.fmt(bill.total)}</span></div>
-          <div style="font-size:12px;color:#888;margin-top:8px">Payment: ${bill.payment.mode} | ${payLine}</div>
-        </div>
-        <div class="pi-footer">
-          <div class="thanks">Thank you for shopping with us!</div>
-          <div style="margin-top:4px">Riwaaz by Eshmira | ${CONFIG.address}</div>
-          <div>Tel: ${CONFIG.phone1} | ${CONFIG.phone2}</div>
-        </div>
-      </div>`;
+      `;
+    }
   },
 
   bill: (bill) => {
@@ -633,66 +715,152 @@ const Print = {
     const cPhone = (bill.customer.phone || '').trim();
     document.title = `${cName}${cPhone ? ' - ' + cPhone : ''} - Bill`;
 
-    const printArea = document.getElementById('print-area');
-    printArea.innerHTML = Print.buildHtml(bill);
-    printArea.classList.remove('hidden');
-    window.print();
-    printArea.classList.add('hidden');
+    const isA4 = localStorage.getItem('printerType') === 'a4';
+
+    // Get or create print iframe
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
     
-    document.title = oldTitle;
+    const htmlContent = Print.buildHtml(bill);
+    
+    doc.write(`
+      <html>
+        <head>
+          <title>${document.title}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+          <style>
+            body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            /* A4 Styles */
+            ${isA4 ? `
+              .print-invoice {
+                font-family: 'Inter', sans-serif;
+                max-width: 700px;
+                margin: 0 auto;
+                padding: 40px;
+                color: #2c1810;
+              }
+              .pi-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #C9A458; padding-bottom: 20px; margin-bottom: 20px; }
+              .pi-shop-name { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 700; color: #B8860B; text-transform: uppercase; letter-spacing: 1px; }
+              .pi-tagline { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-top: -4px; }
+              .pi-address { font-size: 12px; color: #666; line-height: 1.6; text-align: right; }
+              .pi-meta { display: flex; justify-content: space-between; margin-bottom: 24px; }
+              .pi-bill-no { font-size: 18px; font-weight: 700; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+              table th { background: #F8F3EA; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; border-bottom: 2px solid #E8CB7A; }
+              table td { padding: 10px 12px; border-bottom: 1px solid #F0E8D5; font-size: 13px; }
+              .pi-totals { margin-left: auto; width: 240px; }
+              .pi-total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+              .pi-grand { border-top: 2px solid #C9A458; padding-top: 10px; font-size: 18px; font-weight: 700; margin-top: 8px; }
+              .pi-footer { text-align: center; margin-top: 40px; font-size: 12px; color: #888; border-top: 1px solid #EEE; padding-top: 20px; }
+              .pi-footer .thanks { font-family: 'Cormorant Garamond', serif; font-size: 18px; color: #B8860B; }
+            ` : `
+              /* Thermal Printer Styles (72mm/80mm) */
+              @media print {
+                body { margin: 0; padding: 0; background: white; }
+                .print-receipt-container { width: 100% !important; padding: 0 !important; }
+              }
+            `}
+          </style>
+        </head>
+        <body>
+          ${htmlContent}
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      document.title = oldTitle;
+    }, 500);
   },
 
   shippingLabel: (bill) => {
     if (!bill || !bill.isOnline) return;
-    const printArea = document.getElementById('print-area');
-    
-    printArea.innerHTML = `
-      <div style="font-family:Arial,sans-serif;width:4in;height:6in;padding:24px;border:2px solid #000;box-sizing:border-box;margin:0 auto;position:relative">
-        
-        <!-- From Section -->
-        <div style="border-bottom:2px solid #000;padding-bottom:16px;margin-bottom:16px">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:4px">From:</div>
-          <div style="font-size:18px;font-weight:900;margin-bottom:4px">Riwaaz by Eshmira</div>
-          <div style="font-size:14px;line-height:1.4">
-            ${CONFIG.address}<br>
-            Ph: ${CONFIG.phone1} | ${CONFIG.phone2}
-          </div>
-        </div>
-        
-        <!-- To Section -->
-        <div style="margin-bottom:16px">
-          <div style="font-size:14px;font-weight:900;text-transform:uppercase;margin-bottom:8px">To:</div>
-          <div style="font-size:24px;font-weight:900;margin-bottom:8px">${H.escHtml(bill.customer.name || 'Customer')}</div>
-          
-          <div style="font-size:16px;line-height:1.5;margin-bottom:16px">
-            ${H.escHtml(bill.customer.address)}<br>
-            <strong style="font-size:18px">PIN: ${H.escHtml(bill.customer.pincode)}</strong>
-          </div>
-          
-          <div style="font-size:16px;font-weight:700;padding:12px;border:2px dashed #000;background:#f9f9f9;display:inline-block">
-            📞 Phone: ${bill.customer.phone || 'N/A'}
-            ${bill.customer.altPhone ? `<br>📞 Alt: ${bill.customer.altPhone}` : ''}
-          </div>
-        </div>
-
-        <!-- Order Meta -->
-        <div style="position:absolute;bottom:24px;left:24px;right:24px;border-top:2px solid #000;padding-top:16px;font-size:12px;display:flex;justify-content:space-between">
-          <div>Order: <strong>${bill.billNumber}</strong></div>
-          <div>Date: <strong>${H.formatDateShort(bill.date)}</strong></div>
-        </div>
-        
-      </div>
-    `;
     const oldTitle = document.title;
     const cName = (bill.customer.name || 'Customer').trim().replace(/[^a-zA-Z0-9 ]/g, '');
     const cPhone = (bill.customer.phone || '').trim();
     document.title = `${cName}${cPhone ? ' - ' + cPhone : ''} - Shipping Label`;
-    
-    printArea.classList.remove('hidden');
-    window.print();
-    printArea.classList.add('hidden');
-    
-    document.title = oldTitle;
+
+    // Get or create print iframe
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <html>
+        <head>
+          <title>${document.title}</title>
+          <style>
+            body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          </style>
+        </head>
+        <body>
+          <div style="font-family:Arial,sans-serif;width:4in;height:6in;padding:24px;border:2px solid #000;box-sizing:border-box;margin:0 auto;position:relative">
+            
+            <!-- From Section -->
+            <div style="border-bottom:2px solid #000;padding-bottom:16px;margin-bottom:16px">
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:4px">From:</div>
+              <div style="font-size:18px;font-weight:900;margin-bottom:4px">Riwaaz by Eshmira</div>
+              <div style="font-size:14px;line-height:1.4">
+                ${CONFIG.address}<br>
+                Ph: ${CONFIG.phone1} | ${CONFIG.phone2}
+              </div>
+            </div>
+            
+            <!-- To Section -->
+            <div style="margin-bottom:16px">
+              <div style="font-size:14px;font-weight:900;text-transform:uppercase;margin-bottom:8px">To:</div>
+              <div style="font-size:24px;font-weight:900;margin-bottom:8px">${H.escHtml(bill.customer.name || 'Customer')}</div>
+              
+              <div style="font-size:16px;line-height:1.5;margin-bottom:16px">
+                ${H.escHtml(bill.customer.address)}<br>
+                <strong style="font-size:18px">PIN: ${H.escHtml(bill.customer.pincode)}</strong>
+              </div>
+              
+              <div style="font-size:16px;font-weight:700;padding:12px;border:2px dashed #000;background:#f9f9f9;display:inline-block">
+                📞 Phone: ${bill.customer.phone || 'N/A'}
+                ${bill.customer.altPhone ? `<br>📞 Alt: ${bill.customer.altPhone}` : ''}
+              </div>
+            </div>
+
+            <!-- Order Meta -->
+            <div style="position:absolute;bottom:24px;left:24px;right:24px;border-top:2px solid #000;padding-top:16px;font-size:12px;display:flex;justify-content:space-between">
+              <div>Order: <strong>${bill.billNumber}</strong></div>
+              <div>Date: <strong>${H.formatDateShort(bill.date)}</strong></div>
+            </div>
+            
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      document.title = oldTitle;
+    }, 500);
   }
 };
 
@@ -1212,7 +1380,13 @@ Views['new-bill'] = {
           <h1>✦ New Bill</h1>
           <p>Create a digital bill and share instantly on WhatsApp</p>
         </div>
-        <button class="btn btn-ghost" onclick="Router.go('bills')">View All Bills</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="bill-printer-type" class="form-select" style="width:auto; padding:4px 24px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" onchange="localStorage.setItem('printerType', this.value)">
+            <option value="thermal" ${localStorage.getItem('printerType')==='a4'?'':'selected'}>Thermal Printer</option>
+            <option value="a4" ${localStorage.getItem('printerType')==='a4'?'selected':''}>Normal A4 Printer</option>
+          </select>
+          <button class="btn btn-ghost" onclick="Router.go('bills')">View All Bills</button>
+        </div>
       </div>
 
       <div class="bill-form-container">
@@ -1502,7 +1676,13 @@ Views['bills'] = {
           <h1>All Bills</h1>
           <p>${bills.length} total bill${bills.length!==1?'s':''}</p>
         </div>
-        <button class="btn btn-gold" onclick="Router.go('new-bill')">✦ New Bill</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="history-printer-type" class="form-select" style="width:auto; padding:4px 24px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" onchange="localStorage.setItem('printerType', this.value)">
+            <option value="thermal" ${localStorage.getItem('printerType')==='a4'?'':'selected'}>Thermal Printer</option>
+            <option value="a4" ${localStorage.getItem('printerType')==='a4'?'selected':''}>Normal A4 Printer</option>
+          </select>
+          <button class="btn btn-gold" onclick="Router.go('new-bill')">✦ New Bill</button>
+        </div>
       </div>
 
       <div class="card">
