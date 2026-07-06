@@ -507,6 +507,12 @@ _For queries: ${CONFIG.phone1}_`;
     navigator.clipboard.writeText(text).then(() => Toast.show('✓ Bill text copied to clipboard!', 'gold'));
   },
 
+  printAndShare: async (bill, type) => {
+    localStorage.setItem('printerType', type);
+    Print.bill(bill);
+    await Share.whatsapp(bill);
+  },
+
   openShareModal: (bill) => {
     const phone = (bill.customer.phone || '').replace(/\D/g,'').slice(-10);
     const waText = Share.buildWhatsAppText(bill);
@@ -544,10 +550,10 @@ _For queries: ${CONFIG.phone1}_`;
             📋 Copy Bill Text
           </button>
            <div style="height:1px;background:var(--cream-200);margin:6px 0"></div>
-          <button class="btn btn-print btn-full" style="background:#4A3020;color:#fff" onclick="localStorage.setItem('printerType', 'a4'); Print.bill(Store.getBill('${bill.id}'))">
+          <button class="btn btn-print btn-full" style="background:#4A3020;color:#fff" onclick="Share.printAndShare(Store.getBill('${bill.id}'), 'a4')">
             🖨️ Print A4 Invoice
           </button>
-          <button class="btn btn-print btn-full" style="background:#B8860B;color:#fff;margin-top:8px" onclick="localStorage.setItem('printerType', 'thermal'); Print.bill(Store.getBill('${bill.id}'))">
+          <button class="btn btn-print btn-full" style="background:#B8860B;color:#fff;margin-top:8px" onclick="Share.printAndShare(Store.getBill('${bill.id}'), 'thermal')">
             🧾 Print Thermal Receipt
           </button>
           <button class="btn btn-ghost btn-full" onclick="ShareModal.close()">Done</button>
@@ -630,7 +636,7 @@ const Print = {
           </div>
         </div>`;
     } else {
-      // Thermal printer layout (72mm/80mm receipt style)
+      // Thermal printer layout (72mm/80mm receipt style) - signature layout matching brand design
       const payLine = bill.payment.status === 'paid'
         ? `PAID`
         : `Due: ₹${bill.payment.due.toLocaleString('en-IN')}`;
@@ -644,9 +650,11 @@ const Print = {
         </style>
         <div class="print-receipt-container" style="font-family:sans-serif; width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; color: #000; background: #fff;">
           <div style="text-align:center; margin-bottom:10px;">
-            <div style="font-size:20px; font-weight:800; text-transform:uppercase; letter-spacing:1px; line-height:1.2;">Riwaaz</div>
-            <div style="font-size:9px; text-transform:uppercase; letter-spacing:2px; margin-top:-2px;">by Eshmira</div>
-            <div style="font-size:9px; margin-top:4px; line-height:1.3; color:#333">
+            <div style="font-size:10px; letter-spacing:4px; color:#555; margin-bottom:4px;">✦ ✦ ✦</div>
+            <div style="font-size:26px; font-weight:800; font-family:'Cormorant Garamond', serif; text-transform:uppercase; letter-spacing:1px; line-height:1.1; color:#000;">Riwaaz</div>
+            <div style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:3px; margin-top:2px; color:#555;">✿ BY ESHMIRA ✿</div>
+            <div style="border-top:1px dashed #000; margin:8px 0;"></div>
+            <div style="font-size:9px; line-height:1.4; color:#333">
               ${CONFIG.address}<br/>
               Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
             </div>
@@ -675,11 +683,12 @@ const Print = {
             <tbody>
               ${bill.items.map(it => `
                 <tr style="border-bottom:1px dotted #ccc;">
-                  <td style="padding:4px 0; word-break:break-word; max-width:110px;">
-                    <div style="font-weight:600;">${H.escHtml(it.description || it.category)}</div>
-                    <div style="font-size:8px; color:#555;">${H.escHtml(it.category)} @ ₹${it.price.toLocaleString('en-IN')}</div>
+                  <td style="padding:5px 0; word-break:break-word; max-width:120px;">
+                    <div style="font-size:8px; font-weight:700; text-transform:uppercase; color:#000;">${H.escHtml(it.category)}</div>
+                    <div style="font-size:9px; font-weight:500; margin-top:1px;">${H.escHtml(it.description || 'Item')}</div>
+                    ${it.details ? `<div style="font-size:7px; color:#666; margin-top:1px;">${H.escHtml(it.details)}</div>` : ''}
                   </td>
-                  <td style="text-align:center; padding:4px 0; vertical-align:top;">${it.qty}</td>
+                  <td style="text-align:center; padding:5px 0; vertical-align:top;">${it.qty}</td>
                   <td style="text-align:right; padding:4px 0; vertical-align:top; font-weight:600;">₹${it.total.toLocaleString('en-IN')}</td>
                 </tr>
               `).join('')}
@@ -694,7 +703,10 @@ const Print = {
             <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; border-top:1px dotted #000; padding-top:3px; margin-top:3px;">
               <span>GRAND TOTAL:</span><span>₹${bill.total.toLocaleString('en-IN')}</span>
             </div>
-            <div style="font-size:8px; color:#555; margin-top:3px;">Payment: ${bill.payment.mode} | ${payLine}</div>
+            
+            <div style="font-size:8px; color:#000; margin-top:4px; padding:3px; border:1px solid #000; display:inline-block; text-transform:uppercase; font-weight:700;">
+              ${bill.payment.status === 'paid' ? '✓ Paid' : bill.payment.status === 'partial' ? '🔶 Partial' : '⏳ Pending'} - ${bill.payment.mode}
+            </div>
           </div>
           
           <div style="border-top:1px dashed #000; margin:6px 0; margin-top:10px;"></div>
