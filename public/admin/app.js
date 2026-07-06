@@ -648,7 +648,7 @@ const Print = {
             .print-receipt-container { width: 100% !important; padding: 0 !important; }
           }
         </style>
-        <div class="print-receipt-container" style="font-family:sans-serif; width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; color: #000; background: #fff;">
+        <div class="print-receipt-container" style="font-family:sans-serif; width: 100%; max-width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; color: #000; background: #fff;">
           <div style="text-align:center; margin-bottom:10px;">
             <div style="font-size:10px; letter-spacing:4px; color:#555; margin-bottom:4px;">✦ ✦ ✦</div>
             <div style="font-size:26px; font-weight:800; font-family:'Cormorant Garamond', serif; text-transform:uppercase; letter-spacing:1px; line-height:1.1; color:#000;">Riwaaz</div>
