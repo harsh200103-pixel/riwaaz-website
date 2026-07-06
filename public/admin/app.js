@@ -2383,6 +2383,9 @@ Views['customers'] = {
           <h1>Customers</h1>
           <p>${customers.length} customer${customers.length!==1?'s':''} registered</p>
         </div>
+        <button class="btn btn-outline" style="border-color:#25D366;color:#128C7E;display:flex;align-items:center;gap:6px;font-size:13px;padding:8px 16px" onclick="Views.customers.openBroadcastModal()">
+          📢 WhatsApp Broadcast
+        </button>
       </div>
       <div class="card">
         <div class="card-header">
@@ -2451,6 +2454,130 @@ Views['customers'] = {
         <div style="font-size:13px;color:var(--text-muted)">Phone: ${c.phone || '—'} · Total Spent: <strong>${H.fmt(c.totalSpent)}</strong></div>
       </div>
       <div>${rows}</div>`);
+  },
+
+  openBroadcastModal: () => {
+    const customers = Store.getCustomers().filter(c => c.phone);
+    if (customers.length === 0) {
+      Toast.show('⚠️ No customers with registered phone numbers.', 'error');
+      return;
+    }
+
+    const defaultMsg = `Hello [Customer Name]! 🌟\n\nExciting news! We have just received our latest inventory of luxury suits and outfits at *Riwaaz by Eshmira*. 👗✨\n\nYou can browse the new collection directly on our website:\n👉 https://riwaaz-website.vercel.app/catalog\n\nVisit us soon or message us to reserve your favorite pieces! ❤️`;
+
+    const listHtml = customers.map((c, idx) => `
+      <div class="bc-row" id="bc-row-${c.id}" style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--cream-200); transition: background 0.3s ease;">
+        <div>
+          <div style="font-weight:600; color:var(--dark-800);">${H.escHtml(c.name)}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${c.phone}</div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <span id="bc-status-${c.id}" style="font-size:11px; color:#aaa; font-weight:600;">Pending</span>
+          <button class="btn btn-sm" id="bc-btn-${c.id}" onclick="Views.customers.sendBroadcastSingle('${c.id}', ${idx})" style="background:#25D366; color:white; border:none; padding:4px 10px; border-radius:6px; font-weight:600; font-size:11px; cursor:pointer;">
+            💬 Send
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    const bodyHtml = `
+      <div style="padding:10px 5px">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">
+          This helper drafts personalized WhatsApp messages for your registered customers. Customize the template below, then send them sequentially.
+        </p>
+        
+        <div style="margin-bottom:16px;">
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:6px;">Message Template</label>
+          <textarea id="bc-template" style="width:100%; height:110px; font-size:12px; padding:10px; border:1.5px solid var(--gold-300); border-radius:8px; resize:vertical; font-family:inherit; background:#FDFAF4; color:var(--dark-800); line-height:1.5; outline:none;">${defaultMsg}</textarea>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Use <code>[Customer Name]</code> to automatically fill each customer's name.</div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-top:1px solid var(--cream-200); padding-top:12px;">
+          <div style="font-size:13px; font-weight:700; color:var(--dark-800);" id="bc-progress">Progress: 0 / ${customers.length} Sent</div>
+          <button class="btn btn-sm" onclick="Views.customers.sendNextBroadcast()" style="background:#B8860B; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px; cursor:pointer;" id="bc-next-btn">
+            ⏩ Send Next Pending
+          </button>
+        </div>
+
+        <div style="max-height: 220px; overflow-y: auto; padding:0 12px; border:1px solid var(--cream-200); border-radius:8px; background:#fff; box-shadow:inset 0 1px 4px rgba(0,0,0,0.03)">
+          <div id="bc-list-container">
+            ${listHtml}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-ghost" onclick="Modal.close()" style="width:100%; text-align:center;">Close Assistant</button>
+    `;
+
+    Views.customers.bcState = {
+      customers: customers,
+      sentIds: new Set(),
+      currentIndex: 0
+    };
+
+    Modal.open('📢 WhatsApp Broadcast Assistant', bodyHtml, footerHtml);
+  },
+
+  sendBroadcastSingle: (id, idx) => {
+    const c = Views.customers.bcState.customers[idx];
+    if (!c) return;
+
+    // Get the template from input
+    const template = document.getElementById('bc-template').value;
+    const personalized = template.replace(/\[Customer Name\]/g, c.name);
+
+    // Open WhatsApp in new tab
+    const phone = '91' + c.phone.replace(/\D/g,'').slice(-10);
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(personalized)}`;
+    window.open(url, '_blank');
+
+    // Mark as sent
+    Views.customers.bcState.sentIds.add(id);
+    
+    // Update UI for this customer row
+    const row = document.getElementById(`bc-row-${id}`);
+    if (row) {
+      row.style.background = '#f0fdf4';
+      const statusSpan = document.getElementById(`bc-status-${id}`);
+      if (statusSpan) {
+        statusSpan.innerHTML = '✅ Sent';
+        statusSpan.style.color = '#22c55e';
+      }
+      const btn = document.getElementById(`bc-btn-${id}`);
+      if (btn) {
+        btn.innerHTML = 'Resend';
+        btn.style.background = '#6b7280';
+      }
+    }
+
+    // Update progress
+    const progress = document.getElementById('bc-progress');
+    if (progress) {
+      progress.innerHTML = `Progress: ${Views.customers.bcState.sentIds.size} / ${Views.customers.bcState.customers.length} Sent`;
+    }
+
+    // Update current index to point to the next one
+    if (Views.customers.bcState.currentIndex <= idx) {
+      Views.customers.bcState.currentIndex = idx + 1;
+    }
+  },
+
+  sendNextBroadcast: () => {
+    const state = Views.customers.bcState;
+    if (!state) return;
+
+    // Find first customer not in sentIds
+    const nextIdx = state.customers.findIndex(c => !state.sentIds.has(c.id));
+    if (nextIdx === -1) {
+      Toast.show('🎉 All customers have been messaged!', 'success');
+      return;
+    }
+
+    // Trigger for that customer
+    const nextCust = state.customers[nextIdx];
+    Views.customers.sendBroadcastSingle(nextCust.id, nextIdx);
   }
 };
 
