@@ -183,7 +183,13 @@ const Store = {
   },
 
   // Bills
-  getBills: () => Store.data.bills,
+  getBills: () => {
+    return [...(Store.data.bills || [])].sort((a, b) => {
+      const aTime = a.createdAt || new Date(a.date).getTime() || 0;
+      const bTime = b.createdAt || new Date(b.date).getTime() || 0;
+      return bTime - aTime;
+    });
+  },
   addBill: (bill) => {
     db.collection('bills').doc(bill.id).set(bill);
     Store.upsertCustomer(bill.customer, bill.id, bill.total);
@@ -596,7 +602,7 @@ const Print = {
           <div class="pi-meta">
             <div>
               <div class="pi-bill-no">Bill #: ${bill.billNumber}</div>
-              <div style="font-size:13px;color:#666;margin-top:4px">Date: ${H.formatDate(bill.date)}</div>
+              <div style="font-size:13px;color:#666;margin-top:4px">Date: ${H.formatDate(bill.date)} ${bill.time ? ' | Time: ' + bill.time : ''}</div>
             </div>
             <div style="text-align:right">
               <div style="font-size:14px;font-weight:600">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</div>
@@ -672,7 +678,7 @@ const Print = {
             <!-- Metadata Info -->
             <div style="font-size:9px; line-height:1.4; margin-bottom:8px;">
               <div style="display:flex; justify-content:space-between;"><span>BILL NO:</span><span style="font-weight:700;">${bill.billNumber}</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>DATE:</span><span>${H.formatDate(bill.date)}</span></div>
+              <div style="display:flex; justify-content:space-between;"><span>DATE:</span><span>${H.formatDate(bill.date)} ${bill.time ? ' | ' + bill.time : ''}</span></div>
               <div style="display:flex; justify-content:space-between;"><span>CUSTOMER:</span><span style="font-weight:700; text-transform:uppercase;">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</span></div>
               ${bill.customer.phone ? `<div style="display:flex; justify-content:space-between;"><span>PHONE:</span><span>${bill.customer.phone}</span></div>` : ''}
             </div>
@@ -1393,6 +1399,8 @@ const Billing = {
       id:          H.id('BILL'),
       billNumber:  Store.nextBillNumber(),
       date:        H.today(),
+      time:        new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      createdAt:   Date.now(),
       customer:    { name, phone, address, pincode, altPhone },
       isOnline,
       items,
@@ -1799,7 +1807,10 @@ Views['bills'] = {
           <div style="font-weight:600">${H.escHtml(b.customer.name || 'Walk-in Customer')}</div>
           ${b.customer.phone ? `<div style="font-size:11px;color:var(--text-muted)">${b.customer.phone}</div>` : ''}
         </td>
-        <td>${H.formatDate(b.date)}</td>
+        <td>
+          <div>${H.formatDate(b.date)}</div>
+          ${b.time ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🕒 ${b.time}</div>` : ''}
+        </td>
         <td>${b.items.length} item${b.items.length!==1?'s':''}</td>
         <td style="font-weight:700">${H.fmt(b.total)}</td>
         <td>${b.payment.mode}</td>
@@ -1888,7 +1899,10 @@ Views['bills'] = {
           <div style="font-weight:600">${H.escHtml(b.customer.name || 'Walk-in Customer')}</div>
           ${b.customer.phone ? `<div style="font-size:11px;color:var(--text-muted)">${b.customer.phone}</div>` : ''}
         </td>
-        <td>${H.formatDate(b.date)}</td>
+        <td>
+          <div>${H.formatDate(b.date)}</div>
+          ${b.time ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🕒 ${b.time}</div>` : ''}
+        </td>
         <td>${b.items.length} item${b.items.length!==1?'s':''}</td>
         <td>
           <div style="font-weight:700">${H.fmt(b.total)}</div>
