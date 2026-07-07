@@ -2495,7 +2495,14 @@ Views['inventory'] = {
         <head>
           <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
           <style>
-            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; }
+            @page {
+              size: 50mm 30mm;
+              margin: 0;
+            }
+            body, html { 
+              margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; 
+              width: 50mm; height: 30mm; overflow: hidden;
+            }
             .label-container {
               display: flex; flex-direction: column; align-items: center; justify-content: center;
               width: 50mm; height: 30mm; padding: 0.5mm 2mm; box-sizing: border-box;
