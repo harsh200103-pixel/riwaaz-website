@@ -2506,7 +2506,7 @@ Views['inventory'] = {
             .label-container {
               display: flex; flex-direction: column; align-items: center; justify-content: center;
               width: 50mm; height: 30mm; padding: 0.5mm 2mm; box-sizing: border-box;
-              border: 1.2px solid #000; border-radius: 4px; position: relative; overflow: hidden;
+              position: relative; overflow: hidden; background: white;
             }
             .label-brand {
               font-family: 'Cormorant Garamond', serif; font-size: 10px; font-weight: 700; 
@@ -2571,7 +2571,7 @@ Views['inventory'] = {
       const el = iframeDoc.getElementById('barcode-single');
       if (el) {
         try { 
-          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 25, displayValue: true, fontSize: 8, margin: 2 }); 
+          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 25, displayValue: true, fontSize: 8, margin: 10 }); 
         } catch(e) { console.error("Error drawing barcode:", e); }
       }
     }
