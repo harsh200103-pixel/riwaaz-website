@@ -2141,7 +2141,7 @@ Views['bills'] = {
       due: newDue,
       status: newDue <= 0 ? 'paid' : 'partial',
       mode: (!bill.payment || bill.payment.mode === 'Pending') ? paymentMode : (bill.payment.mode + ' + ' + paymentMode),
-      dueClearedOn: newDue <= 0 ? H.today() : (bill.payment ? bill.payment.dueClearedOn : null)
+      dueClearedOn: newDue <= 0 ? H.today() : (bill.payment && bill.payment.dueClearedOn ? bill.payment.dueClearedOn : "")
     };
     
     // Save the updated bill
@@ -2161,7 +2161,7 @@ Views['bills'] = {
         setTimeout(() => Share.openShareModal(updatedBill), 500);
       }
     } catch (err) {
-      console.error("Error saving updated bill payment:", err);
+      console.error("Error saving updated bill payment:", err, "payload:", updatedPayment);
       Toast.show("⚠️ Error: Failed to save payment update to database.", "error", 4000);
     }
   }
