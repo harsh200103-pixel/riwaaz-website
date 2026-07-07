@@ -2124,39 +2124,45 @@ Views['bills'] = {
       return;
     }
     
-    const dueAmt = bill.payment.due;
+    const dueAmt = parseFloat(bill.payment ? bill.payment.due : 0) || 0;
     const amountInput = document.getElementById('due-pay-amount');
     const payingAmt = parseFloat(amountInput ? amountInput.value : dueAmt);
     
     if (isNaN(payingAmt) || payingAmt <= 0) return Toast.show('⚠️ Please enter a valid payment amount.', 'error');
     if (payingAmt > dueAmt) return Toast.show('⚠️ Amount cannot exceed the remaining due.', 'error');
     
-    const newDue = dueAmt - payingAmt;
+    const newDue = Math.max(0, dueAmt - payingAmt);
+    const currentPaid = parseFloat(bill.payment ? bill.payment.amountPaid : 0) || 0;
     
     // Update the bill payment
     const updatedPayment = {
       ...bill.payment,
-      amountPaid: bill.payment.amountPaid + payingAmt,
+      amountPaid: currentPaid + payingAmt,
       due: newDue,
       status: newDue <= 0 ? 'paid' : 'partial',
-      mode: bill.payment.mode === 'Pending' ? paymentMode : (bill.payment.mode + ' + ' + paymentMode),
-      dueClearedOn: newDue <= 0 ? H.today() : bill.payment.dueClearedOn
+      mode: (!bill.payment || bill.payment.mode === 'Pending') ? paymentMode : (bill.payment.mode + ' + ' + paymentMode),
+      dueClearedOn: newDue <= 0 ? H.today() : (bill.payment ? bill.payment.dueClearedOn : null)
     };
     
     // Save the updated bill
-    Store.updateBill(id, { payment: updatedPayment });
-    Modal.close();
-    
-    if (newDue <= 0) {
-      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} fully cleared!`, 'success');
-    } else {
-      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} partially cleared! Remaining due: ₹${H.fmtNum(newDue)}.`, 'success');
-    }
-    
-    // Auto-send updated receipt via WhatsApp
-    const updatedBill = Store.getBill(id);
-    if (updatedBill) {
-      setTimeout(() => Share.openShareModal(updatedBill), 500);
+    try {
+      Store.updateBill(id, { payment: updatedPayment });
+      Modal.close();
+      
+      if (newDue <= 0) {
+        Toast.show(`✅ ₹${H.fmtNum(payingAmt)} fully cleared!`, 'success');
+      } else {
+        Toast.show(`✅ ₹${H.fmtNum(payingAmt)} partially cleared! Remaining due: ₹${H.fmtNum(newDue)}.`, 'success');
+      }
+      
+      // Auto-send updated receipt via WhatsApp
+      const updatedBill = Store.getBill(id);
+      if (updatedBill) {
+        setTimeout(() => Share.openShareModal(updatedBill), 500);
+      }
+    } catch (err) {
+      console.error("Error saving updated bill payment:", err);
+      Toast.show("⚠️ Error: Failed to save payment update to database.", "error", 4000);
     }
   }
 };
