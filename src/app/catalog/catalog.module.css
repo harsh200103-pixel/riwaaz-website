@@ -42,6 +42,27 @@
   padding-bottom: 80px;
 }
 
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding-bottom: 40px;
+  }
+  .productInfo {
+    padding: 12px;
+  }
+  .productName {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .productPrice {
+    font-size: 13px;
+  }
+  .productCat {
+    font-size: 9px;
+  }
+}
+
 .productCard {
   background: var(--white);
   border: 1px solid var(--cream-200);

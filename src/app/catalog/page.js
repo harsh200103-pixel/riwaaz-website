@@ -97,7 +97,15 @@ export default function CatalogPage() {
                     <h3 className={styles.productName}>{suit.name}</h3>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div className={styles.productPrice}>₹{suit.price.toLocaleString('en-IN')}</div>
-                      {suit.size && <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>{suit.size}</div>}
+                      {suit.size && <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>{suit.size}</div>}
+                    </div>
+                    {/* Fabric and Colors Quick Details */}
+                    <div style={{ display: 'flex', gap: '4px', marginTop: '6px', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.02em', flexWrap: 'wrap' }}>
+                      {suit.fabric && <span>{suit.fabric}</span>}
+                      {suit.fabric && suit.colors && suit.colors.length > 0 && <span>·</span>}
+                      {suit.colors && suit.colors.length > 0 && (
+                        <span>{suit.colors.length} Color{suit.colors.length > 1 ? 's' : ''}</span>
+                      )}
                     </div>
                   </div>
                 </Link>
