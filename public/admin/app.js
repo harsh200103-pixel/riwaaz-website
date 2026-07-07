@@ -814,9 +814,16 @@ const Print = {
     `);
     doc.close();
 
+    // Restore document title after print dialog closes, or after 8 seconds fallback
+    const restoreTitle = () => {
+      document.title = oldTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    window.addEventListener('afterprint', restoreTitle);
+    
     setTimeout(() => {
       iframe.contentWindow.print();
-      document.title = oldTitle;
+      setTimeout(restoreTitle, 8000); // 8-second fallback
     }, 500);
   },
 
@@ -890,9 +897,16 @@ const Print = {
     `);
     doc.close();
 
+    // Restore document title after print dialog closes, or after 8 seconds fallback
+    const restoreTitle = () => {
+      document.title = oldTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    window.addEventListener('afterprint', restoreTitle);
+
     setTimeout(() => {
       iframe.contentWindow.print();
-      document.title = oldTitle;
+      setTimeout(restoreTitle, 8000); // 8-second fallback
     }, 500);
   }
 };
@@ -1368,7 +1382,11 @@ const Billing = {
 
   addProductBySku: (sku) => {
     if (!sku) return false;
-    const p = Store.getProducts().find(prod => prod.id === sku || prod.sku === sku);
+    const searchSku = sku.trim().toLowerCase();
+    const p = Store.getProducts().find(prod => 
+      prod.id.toLowerCase() === searchSku || 
+      (prod.sku && prod.sku.toLowerCase() === searchSku)
+    );
     if (p) {
       // Remove empty rows first
       const rows = document.querySelectorAll('.item-row');
@@ -1819,13 +1837,24 @@ Views['new-bill'] = {
 
     setTimeout(() => {
       try {
-        // Restrict decoding formats to Code 128 and QR Code to speed up scanning by 10x!
+        // Restrict decoding formats to common barcodes and QR Codes to keep it fast
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
           Html5QrcodeSupportedFormats.QR_CODE
         ];
         
-        const scanner = new Html5Qrcode("camera-scanner-view", { formatsToSupport: formatsToSupport });
+        // Enable experimental native browser BarcodeDetector which runs hardware-accelerated scanning!
+        const scanner = new Html5Qrcode("camera-scanner-view", { 
+          formatsToSupport: formatsToSupport,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        });
         Views['new-bill'].activeScanner = scanner;
 
         scanner.start(
@@ -1833,8 +1862,8 @@ Views['new-bill'] = {
           {
             fps: 24, // Increase scan frame rate
             qrbox: (width, height) => {
-              // Return wide rectangular bounding box optimized for barcodes
-              return { width: Math.min(270, width * 0.85), height: Math.min(100, height * 0.45) };
+              // Larger rectangular box optimized for thermal sticker barcodes
+              return { width: Math.min(290, width * 0.95), height: Math.min(130, height * 0.6) };
             }
           },
           (decodedText) => {
