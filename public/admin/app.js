@@ -2251,6 +2251,10 @@ Views['inventory'] = {
       <label class="form-label">Product Name *</label>
       <input id="prod-name" class="form-input" placeholder="e.g. Georgette Anarkali Set" value="${H.escHtml(p?.name||'')}">
     </div>
+    <div class="form-group">
+      <label class="form-label">SKU / Custom Barcode Code <span style="font-weight:400;color:var(--text-muted)">(e.g. 101, JS-01 - leave blank to auto-generate)</span></label>
+      <input id="prod-sku" class="form-input" placeholder="Enter short code for easy barcode scanning" value="${H.escHtml(p?.sku||'')}">
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Category *</label>
@@ -2292,6 +2296,15 @@ Views['inventory'] = {
       <div style="display: flex; align-items: center; gap: 8px;">
         <input type="checkbox" id="prod-soldout" ${p?.soldOut ? 'checked' : ''} style="width:16px;height:16px;accent-color:#DC2626">
         <label for="prod-soldout" style="font-size: 13px; font-weight: 500; color: #DC2626; margin:0;">Out of Stock / Sold Out (Show "Sold Out" on website)</label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top: 16px; padding: 14px; border: 1.5px dashed var(--gold-300); border-radius: 8px; background: var(--cream-50)">
+      <label class="form-label" style="font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+        <span>📸 Product Photos <span style="font-weight: 400; color: var(--text-muted); font-size:12px;">(Required for online catalog)</span></span>
+      </label>
+      <input type="file" id="prod-images-input" class="form-input" accept="image/*" multiple style="padding: 6px; background: #fff;" onchange="Views.inventory.handleImageSelection(event)">
+      <div id="image-previews-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+        ${Views.inventory.renderImagePreviews()}
       </div>
     </div>`,
 
