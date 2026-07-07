@@ -132,25 +132,25 @@ const Store = {
         const bills = snap.docs.map(d => d.data());
         Store.data.bills = bills;
         localStorage.setItem('cached_bills', JSON.stringify(bills));
-        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('products').onSnapshot(snap => {
         const products = snap.docs.map(d => d.data());
         Store.data.products = products;
         localStorage.setItem('cached_products', JSON.stringify(products));
-        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('customers').onSnapshot(snap => {
         const customers = snap.docs.map(d => d.data());
         Store.data.customers = customers;
         localStorage.setItem('cached_customers', JSON.stringify(customers));
-        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('returns').onSnapshot(snap => {
         const returns = snap.docs.map(d => d.data());
         Store.data.returns = returns;
         localStorage.setItem('cached_returns', JSON.stringify(returns));
-        if (loaded < 5) checkLoaded(); else App.renderCurrentView();
+        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('metadata').doc('counters').onSnapshot(snap => {
         if (snap.exists) {
@@ -1965,7 +1965,10 @@ Views['bills'] = {
         </td>
         <td>${b.items.length} item${b.items.length!==1?'s':''}</td>
         <td style="font-weight:700">${H.fmt(b.total)}</td>
-        <td>${b.payment.mode}</td>
+        <td>
+          <div style="font-weight:600">${b.payment.mode}</div>
+          ${b.payment.due > 0 ? `<div style="font-size:11px;color:#B91C1C;margin-top:2px;font-weight:600;">Due: ₹${H.fmtNum(b.payment.due)}</div>` : `<div style="font-size:11px;color:#15803D;margin-top:2px;font-weight:600;">Paid: ₹${H.fmtNum(b.payment.amountPaid)}</div>`}
+        </td>
         <td><span class="badge badge-${b.payment.status}">${b.payment.status}</span></td>
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2060,7 +2063,10 @@ Views['bills'] = {
           <div style="font-weight:700">${H.fmt(b.total)}</div>
           ${b.payment.due > 0 ? `<div style="font-size:11px; color:var(--red-600); font-weight:600; margin-top:2px">Due: ${H.fmt(b.payment.due)}</div>` : ''}
         </td>
-        <td>${b.payment.mode}</td>
+        <td>
+          <div style="font-weight:600">${b.payment.mode}</div>
+          ${b.payment.due > 0 ? `<div style="font-size:11px;color:#B91C1C;margin-top:2px;font-weight:600;">Due: ₹${H.fmtNum(b.payment.due)}</div>` : `<div style="font-size:11px;color:#15803D;margin-top:2px;font-weight:600;">Paid: ₹${H.fmtNum(b.payment.amountPaid)}</div>`}
+        </td>
         <td><span class="badge badge-${b.payment.status}">${b.payment.status}</span></td>
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2086,15 +2092,39 @@ Views['bills'] = {
     if (!bill) return;
     
     const dueAmt = bill.payment.due;
-    const amountStr = prompt(`Customer "${bill.customer.name || 'Walk-in'}" has ₹${H.fmtNum(dueAmt)} due.\n\nEnter amount they are paying now:`, dueAmt);
-    if (!amountStr) return;
     
-    const payingAmt = parseFloat(amountStr);
-    if (isNaN(payingAmt) || payingAmt <= 0) return Toast.show('Invalid amount', 'error');
-    if (payingAmt > dueAmt) return Toast.show('Cannot pay more than due amount', 'error');
+    Modal.open(`💰 Clear Due - ${bill.billNumber}`, `
+      <div style="padding:16px;">
+        <div style="margin-bottom:16px;">
+          <label style="font-weight:600; font-size:13px; color:var(--text-body); display:block; margin-bottom:6px;">Remaining Due Amount</label>
+          <div style="font-size:24px; font-weight:700; color:#B91C1C;">₹${H.fmtNum(dueAmt)}</div>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label class="form-label" style="font-weight:600;">Amount Being Paid Now (₹)</label>
+          <input type="number" id="due-pay-amount" class="form-input" value="${dueAmt}" min="1" max="${dueAmt}" style="width:100%; font-size:16px; font-weight:700;">
+        </div>
+        <div>
+          <label class="form-label" style="font-weight:600;">Select Payment Mode</label>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="btn btn-gold" onclick="Views.bills.processDueClearance('${id}', 'Cash')" style="width:100%; height:44px; display:flex; align-items:center; justify-content:center; gap:8px;">💵 Cash</button>
+            <button class="btn btn-gold" onclick="Views.bills.processDueClearance('${id}', 'UPI')" style="width:100%; height:44px; display:flex; align-items:center; justify-content:center; gap:8px; background:#10B981; border-color:#10B981;">📱 UPI / Online</button>
+            <button class="btn btn-gold" onclick="Views.bills.processDueClearance('${id}', 'Card')" style="width:100%; height:44px; display:flex; align-items:center; justify-content:center; gap:8px; background:#3B82F6; border-color:#3B82F6;">💳 Card</button>
+          </div>
+        </div>
+      </div>
+    `, `<button class="btn btn-outline" onclick="Modal.close()" style="width:100%">Cancel</button>`);
+  },
 
-    const paymentMode = prompt(`Entering payment of ₹${H.fmtNum(payingAmt)}.\n\nPayment mode (Cash / UPI / Card):`, 'Cash');
-    if (!paymentMode) return;
+  processDueClearance: (id, paymentMode) => {
+    const bill = Store.getBill(id);
+    if (!bill) return;
+    
+    const dueAmt = bill.payment.due;
+    const amountInput = document.getElementById('due-pay-amount');
+    const payingAmt = parseFloat(amountInput ? amountInput.value : dueAmt);
+    
+    if (isNaN(payingAmt) || payingAmt <= 0) return Toast.show('⚠️ Please enter a valid payment amount.', 'error');
+    if (payingAmt > dueAmt) return Toast.show('⚠️ Amount cannot exceed the remaining due.', 'error');
     
     const newDue = dueAmt - payingAmt;
     
@@ -2104,20 +2134,21 @@ Views['bills'] = {
       amountPaid: bill.payment.amountPaid + payingAmt,
       due: newDue,
       status: newDue <= 0 ? 'paid' : 'partial',
-      mode: bill.payment.mode + ' + ' + paymentMode.trim(),
+      mode: bill.payment.mode === 'Pending' ? paymentMode : (bill.payment.mode + ' + ' + paymentMode),
       dueClearedOn: newDue <= 0 ? H.today() : bill.payment.dueClearedOn
     };
     
     // Save the updated bill
     Store.updateBill(id, { payment: updatedPayment });
-    if (newDue <= 0) {
-      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} fully cleared! Sending updated receipt to customer...`, 'success');
-    } else {
-      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} partially cleared! Remaining due: ₹${H.fmtNum(newDue)}. Sending updated receipt...`, 'success');
-    }
-    Views.bills.render();
+    Modal.close();
     
-    // Auto-send updated PAID receipt to customer via WhatsApp
+    if (newDue <= 0) {
+      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} fully cleared!`, 'success');
+    } else {
+      Toast.show(`✅ ₹${H.fmtNum(payingAmt)} partially cleared! Remaining due: ₹${H.fmtNum(newDue)}.`, 'success');
+    }
+    
+    // Auto-send updated receipt via WhatsApp
     const updatedBill = Store.getBill(id);
     if (updatedBill) {
       setTimeout(() => Share.openShareModal(updatedBill), 500);
