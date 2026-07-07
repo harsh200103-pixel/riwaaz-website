@@ -641,82 +641,100 @@ const Print = {
         : `Due: ₹${bill.payment.due.toLocaleString('en-IN')}`;
 
       return `
-        <style>
-          @media print {
-            body { margin: 0; padding: 0; background: white; }
-            .print-receipt-container { width: 100% !important; padding: 0 !important; }
-          }
-        </style>
-        <div class="print-receipt-container" style="font-family:sans-serif; width: 100%; max-width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; color: #000; background: #fff;">
-          <div style="text-align:center; margin-bottom:10px;">
-            <div style="font-size:10px; letter-spacing:4px; color:#555; margin-bottom:4px;">✦ ✦ ✦</div>
-            <div style="font-size:26px; font-weight:800; font-family:'Cormorant Garamond', serif; text-transform:uppercase; letter-spacing:1px; line-height:1.1; color:#000;">Riwaaz</div>
-            <div style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:3px; margin-top:2px; color:#555;">✿ BY ESHMIRA ✿</div>
-            <div style="border-top:1px dashed #000; margin:8px 0;"></div>
-            <div style="font-size:9px; line-height:1.4; color:#333">
-              ${CONFIG.address}<br/>
-              Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
+        <html>
+        <head>
+          <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+          <style>
+            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; color: #000; }
+            .print-receipt-container { width: 100% !important; padding: 0 !important; box-sizing: border-box; }
+            @media print {
+              body, html { width: 100%; margin: 0; padding: 0; }
+              .print-receipt-container { width: 100% !important; padding: 0 !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-receipt-container" style="width: 100%; max-width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; background: #fff;">
+            <!-- Brand Logo Header -->
+            <div style="text-align:center; margin-bottom:12px;">
+              <div style="font-size:11px; letter-spacing:5px; color:#000; margin-bottom:4px; font-weight:300;">✧ ✦ ✧</div>
+              <div style="font-size:28px; font-weight:700; font-family:'Cormorant Garamond', serif; text-transform:uppercase; letter-spacing:2px; line-height:1.0; color:#000;">Riwaaz</div>
+              <div style="font-size:9px; text-transform:uppercase; letter-spacing:4px; color:#555; margin-top:3px; font-weight:400; font-family:'Cormorant Garamond', serif; font-style:italic;">by Eshmira</div>
+              <div style="border-top: 1px dotted #000; width: 40px; margin: 8px auto;"></div>
+              <div style="font-size:8px; color:#333; margin-top:4px; line-height:1.4; text-transform:uppercase; letter-spacing:0.5px;">
+                ${CONFIG.address}<br/>
+                Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
+              </div>
             </div>
-          </div>
-          
-          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-          
-          <div style="font-size:9px; line-height:1.4; margin-bottom:6px;">
-            <div><strong>Bill #:</strong> ${bill.billNumber}</div>
-            <div><strong>Date:</strong> ${H.formatDate(bill.date)}</div>
-            <div><strong>Customer:</strong> ${H.escHtml(bill.customer.name || 'Walk-in Customer')}</div>
-            ${bill.customer.phone ? `<div><strong>Phone:</strong> ${bill.customer.phone}</div>` : ''}
-            ${bill.isOnline ? `<div><strong>Shipping:</strong> ${H.escHtml(bill.customer.address)} (PIN: ${H.escHtml(bill.customer.pincode)})</div>` : ''}
-          </div>
-          
-          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-          
-          <table style="width:100%; border-collapse:collapse; font-size:9px; line-height:1.3; margin-bottom:6px;">
-            <thead>
-              <tr style="border-bottom:1px dashed #000;">
-                <th style="text-align:left; padding:3px 0; font-weight:700;">Item</th>
-                <th style="text-align:center; padding:3px 0; font-weight:700; width:25px;">Qty</th>
-                <th style="text-align:right; padding:3px 0; font-weight:700; width:55px;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${bill.items.map(it => `
-                <tr style="border-bottom:1px dotted #ccc;">
-                  <td style="padding:5px 0; word-break:break-word; max-width:120px;">
-                    <div style="font-size:8px; font-weight:700; text-transform:uppercase; color:#000;">${H.escHtml(it.category)}</div>
-                    <div style="font-size:9px; font-weight:500; margin-top:1px;">${H.escHtml(it.description || 'Item')}</div>
-                    ${it.details ? `<div style="font-size:7px; color:#666; margin-top:1px;">${H.escHtml(it.details)}</div>` : ''}
-                  </td>
-                  <td style="text-align:center; padding:5px 0; vertical-align:top;">${it.qty}</td>
-                  <td style="text-align:right; padding:4px 0; vertical-align:top; font-weight:600;">₹${it.total.toLocaleString('en-IN')}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          
-          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-          
-          <div style="font-size:9px; line-height:1.4; margin-left:auto; width:100%; max-width:160px; text-align:right;">
-            <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹${bill.subtotal.toLocaleString('en-IN')}</span></div>
-            ${bill.discount > 0 ? `<div style="display:flex; justify-content:space-between;"><span>Discount:</span><span>- ₹${bill.discount.toLocaleString('en-IN')}</span></div>` : ''}
-            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; border-top:1px dotted #000; padding-top:3px; margin-top:3px;">
-              <span>GRAND TOTAL:</span><span>₹${bill.total.toLocaleString('en-IN')}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between;"><span>Amount Paid:</span><span>₹${(bill.payment.amountPaid || 0).toLocaleString('en-IN')}</span></div>
-            ${bill.payment.due > 0 ? `<div style="display:flex; justify-content:space-between; font-weight:700; color:#c00;"><span>BALANCE DUE:</span><span>₹${bill.payment.due.toLocaleString('en-IN')}</span></div>` : ''}
             
-            <div style="font-size:8px; color:#000; margin-top:4px; padding:3px; border:1px solid #000; display:inline-block; text-transform:uppercase; font-weight:700;">
-              ${bill.payment.status === 'paid' ? '✓ Paid' : bill.payment.status === 'partial' ? '🔶 Partial' : '⏳ Pending'} - ${bill.payment.mode}
+            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+            
+            <!-- Metadata Info -->
+            <div style="font-size:9px; line-height:1.4; margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between;"><span>BILL NO:</span><span style="font-weight:700;">${bill.billNumber}</span></div>
+              <div style="display:flex; justify-content:space-between;"><span>DATE:</span><span>${H.formatDate(bill.date)}</span></div>
+              <div style="display:flex; justify-content:space-between;"><span>CUSTOMER:</span><span style="font-weight:700; text-transform:uppercase;">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</span></div>
+              ${bill.customer.phone ? `<div style="display:flex; justify-content:space-between;"><span>PHONE:</span><span>${bill.customer.phone}</span></div>` : ''}
+            </div>
+
+            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+            
+            <!-- Items Table -->
+            <table style="width:100%; border-collapse:collapse; font-size:9px; margin:8px 0;">
+              <thead>
+                <tr style="border-bottom:1px solid #000;">
+                  <th style="text-align:left; padding:4px 0; font-weight:700;">ITEM DETAILS</th>
+                  <th style="text-align:center; padding:4px 0; font-weight:700; width:30px;">QTY</th>
+                  <th style="text-align:right; padding:4px 0; font-weight:700; width:60px;">AMOUNT</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bill.items.map(it => `
+                  <tr style="border-bottom:1px dotted #888;">
+                    <td style="padding:6px 0; word-break:break-word; max-width:120px; line-height:1.2;">
+                      <div style="font-size:8px; font-weight:700; text-transform:uppercase; color:#000;">${H.escHtml(it.category)}</div>
+                      <div style="font-size:9px; font-weight:400; color:#333;">${H.escHtml(it.description || 'Item')}</div>
+                      ${it.details ? `<div style="font-size:7px; color:#555; font-style:italic;">${H.escHtml(it.details)}</div>` : ''}
+                    </td>
+                    <td style="text-align:center; padding:6px 0; vertical-align:middle; font-weight:500;">${it.qty}</td>
+                    <td style="text-align:right; padding:6px 0; vertical-align:middle; font-weight:700;">₹${it.total.toLocaleString('en-IN')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+            
+            <!-- Summary Totals -->
+            <div style="font-size:9px; line-height:1.5; margin-left:auto; width:100%; max-width:170px; text-align:right;">
+              <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹${bill.subtotal.toLocaleString('en-IN')}</span></div>
+              ${bill.discount > 0 ? `<div style="display:flex; justify-content:space-between; font-weight:500;"><span>Discount:</span><span>- ₹${bill.discount.toLocaleString('en-IN')}</span></div>` : ''}
+              <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; border-top:1px dotted #000; padding-top:4px; margin-top:3px; margin-bottom:3px;">
+                <span>GRAND TOTAL:</span><span>₹${bill.total.toLocaleString('en-IN')}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; color:#333;"><span>Amount Paid:</span><span>₹${(bill.payment.amountPaid || 0).toLocaleString('en-IN')}</span></div>
+              ${bill.payment.due > 0 ? `<div style="display:flex; justify-content:space-between; font-weight:700; color:#c00;"><span>BALANCE DUE:</span><span>₹${bill.payment.due.toLocaleString('en-IN')}</span></div>` : ''}
+              
+              <div style="font-size:8px; color:#000; margin-top:6px; padding:3px 6px; border:1px solid #000; display:inline-block; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">
+                ${bill.payment.status === 'paid' ? '✓ Paid' : bill.payment.status === 'partial' ? '🔶 Partial' : '⏳ Pending'} - ${bill.payment.mode}
+              </div>
+            </div>
+            
+            <div style="border-top:1px dashed #000; margin:6px 0; margin-top:12px;"></div>
+            
+            <!-- Thank you and QR Social code -->
+            <div style="text-align:center; margin-top:10px;">
+              <div style="font-family:'Cormorant Garamond', serif; font-size:14px; font-weight:700; font-style:italic; margin-bottom:2px; color:#000;">Thank You!</div>
+              <div style="font-size:8px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Visit us again at Riwaaz by Eshmira</div>
+              
+              <div style="margin: 8px auto; display: inline-block; padding: 4px; border: 1px solid #ccc; background:#fff;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent('https://wa.me/919770496796')}" style="width:60px; height:60px; display:block;">
+              </div>
+              <div style="font-size:7px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Scan to chat with us on WhatsApp</div>
             </div>
           </div>
-          
-          <div style="border-top:1px dashed #000; margin:6px 0; margin-top:10px;"></div>
-          
-          <div style="text-align:center; font-size:8px; line-height:1.3; margin-top:6px; color:#333">
-            <div style="font-weight:700; margin-bottom:2px; font-size:10px;">Thank You!</div>
-            <div>Visit us again at Riwaaz by Eshmira</div>
-          </div>
-        </div>
+        </body>
+        </html>
       `;
     }
   },
@@ -2282,22 +2300,32 @@ Views['inventory'] = {
       html = `
         <html>
         <head>
+          <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
           <style>
-            @page { size: auto; margin: 0mm; }
-            body, html { margin: 0; padding: 0; background: white; font-family: sans-serif; }
+            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; }
             .label-container {
               display: flex; flex-direction: column; align-items: center; justify-content: center;
-              width: 50mm; height: 30mm; padding: 2mm; box-sizing: border-box;
+              width: 50mm; height: 30mm; padding: 2mm 3mm; box-sizing: border-box;
+              border: 1.5px solid #000; border-radius: 4px; position: relative; overflow: hidden;
             }
-            .label-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
-            .label-price { font-size: 10px; font-weight: 600; margin-top: 2px; }
+            .label-brand {
+              font-family: 'Cormorant Garamond', serif; font-size: 10px; font-weight: 700; 
+              text-transform: uppercase; letter-spacing: 2px; margin-bottom: 2px;
+              border-bottom: 1px dotted #000; width: 100%; text-align: center; padding-bottom: 1px;
+            }
+            .label-title { 
+              font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; margin-top: 2px;
+            }
+            .label-price { font-size: 9px; font-weight: 700; margin-top: 1px; letter-spacing: 0.5px; }
           </style>
         </head>
         <body>
           <div class="label-container">
+            <div class="label-brand">Riwaaz</div>
             <div class="label-title">${H.escHtml(p.name)}</div>
             <svg id="barcode-single"></svg>
-            <div class="label-price">₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
+            <div class="label-price">MRP: ₹${p.price ? p.price.toLocaleString('en-IN') : ''}</div>
           </div>
         </body>
         </html>
