@@ -107,29 +107,55 @@ const Store = {
   },
   
   init: async () => {
+    // Load from local storage cache for instant rendering!
+    try {
+      const cachedBills = localStorage.getItem('cached_bills');
+      const cachedProducts = localStorage.getItem('cached_products');
+      const cachedCustomers = localStorage.getItem('cached_customers');
+      const cachedReturns = localStorage.getItem('cached_returns');
+      const cachedCounter = localStorage.getItem('cached_bill_counter');
+      
+      if (cachedBills) Store.data.bills = JSON.parse(cachedBills);
+      if (cachedProducts) Store.data.products = JSON.parse(cachedProducts);
+      if (cachedCustomers) Store.data.customers = JSON.parse(cachedCustomers);
+      if (cachedReturns) Store.data.returns = JSON.parse(cachedReturns);
+      if (cachedCounter) Store.data.billCounter = parseInt(cachedCounter) || 0;
+    } catch (e) {
+      console.warn("Failed to load cached local storage data:", e);
+    }
+
     return new Promise((resolve) => {
       let loaded = 0;
       const checkLoaded = () => { if (++loaded === 5) resolve(); };
       
       db.collection('bills').onSnapshot(snap => {
-        Store.data.bills = snap.docs.map(d => d.data()).sort((a,b) => new Date(b.date) - new Date(a.date));
+        const bills = snap.docs.map(d => d.data());
+        Store.data.bills = bills;
+        localStorage.setItem('cached_bills', JSON.stringify(bills));
         if (loaded < 5) checkLoaded(); else App.renderCurrentView();
       });
       db.collection('products').onSnapshot(snap => {
-        Store.data.products = snap.docs.map(d => d.data());
+        const products = snap.docs.map(d => d.data());
+        Store.data.products = products;
+        localStorage.setItem('cached_products', JSON.stringify(products));
         if (loaded < 5) checkLoaded(); else App.renderCurrentView();
       });
       db.collection('customers').onSnapshot(snap => {
-        Store.data.customers = snap.docs.map(d => d.data());
+        const customers = snap.docs.map(d => d.data());
+        Store.data.customers = customers;
+        localStorage.setItem('cached_customers', JSON.stringify(customers));
         if (loaded < 5) checkLoaded(); else App.renderCurrentView();
       });
       db.collection('returns').onSnapshot(snap => {
-        Store.data.returns = snap.docs.map(d => d.data());
+        const returns = snap.docs.map(d => d.data());
+        Store.data.returns = returns;
+        localStorage.setItem('cached_returns', JSON.stringify(returns));
         if (loaded < 5) checkLoaded(); else App.renderCurrentView();
       });
       db.collection('metadata').doc('counters').onSnapshot(snap => {
         if (snap.exists) {
           Store.data.billCounter = snap.data().billCounter || 0;
+          localStorage.setItem('cached_bill_counter', String(Store.data.billCounter));
         } else {
           db.collection('metadata').doc('counters').set({ billCounter: 0 });
           Store.data.billCounter = 0;

@@ -25,12 +25,22 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Load from local cache first for instant initial rendering!
+    const cached = localStorage.getItem('cached_catalog_products');
+    if (cached) {
+      setSuits(JSON.parse(cached));
+      setLoading(false);
+    }
+
     const fetchSuits = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'products'));
         const products = querySnapshot.docs.map(doc => doc.data());
-        // Filter out shop exclusive items
-        setSuits(products.filter(p => !p.isShopOnly));
+        const filtered = products.filter(p => !p.isShopOnly);
+        setSuits(filtered);
+        
+        // 2. Save fresh data to local cache for next visits
+        localStorage.setItem('cached_catalog_products', JSON.stringify(filtered));
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
@@ -81,15 +91,19 @@ export default function CatalogPage() {
                   <div className={styles.imageWrapper} style={{ position: 'relative' }}>
                     <img src={suit.images && suit.images.length > 0 ? suit.images[0] : suit.image} alt={suit.name} className={styles.productImage} style={suit.soldOut ? { filter: 'grayscale(60%)', opacity: 0.7 } : {}} />
                     {suit.soldOut ? (
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#DC2626', color: '#fff', padding: '4px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#DC2626', color: '#fff', padding: '4px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
                         Sold Out
                       </div>
                     ) : (
-                      suit.stock === 1 && (
-                        <div style={{ position: 'absolute', top: '12px', left: '12px', background: '#B8860B', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          ✨ Unique Piece
+                      suit.stock === 1 ? (
+                        <div style={{ position: 'absolute', top: '12px', left: '12px', background: '#B8860B', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          ✨ Unique Single Piece
                         </div>
-                      )
+                      ) : (suit.stock > 1 && suit.stock <= 4) ? (
+                        <div style={{ position: 'absolute', top: '12px', left: '12px', background: '#1E40AF', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          ⏳ Limited (Only ${suit.stock} Left)
+                        </div>
+                      ) : null
                     )}
                   </div>
                   <div className={styles.productInfo}>

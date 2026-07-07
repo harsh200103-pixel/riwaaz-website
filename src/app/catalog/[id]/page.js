@@ -94,6 +94,11 @@ export default async function ProductDetailPage({ params }) {
             ✨ Exclusive Unique Piece: Only 1 available in stock
           </div>
         )}
+        {!suit.soldOut && suit.stock > 1 && suit.stock <= 4 && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, marginBottom: '20px' }}>
+            ⏳ Limited Edition: Only {suit.stock} pieces available in stock
+          </div>
+        )}
         
         <div className={styles.detailsFabric}>Fabric: {suit.fabric}</div>
         {suit.size && <div className={styles.detailsFabric}>Size: {suit.size}</div>}
