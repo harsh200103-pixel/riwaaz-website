@@ -1830,8 +1830,9 @@ Views['new-bill'] = {
     Modal.open('📷 Mobile Camera Scanner', `
       <div style="text-align:center; padding:10px;">
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Center the product barcode inside the scanner viewport below.</p>
-        <div id="camera-scanner-view" style="width: 100%; max-width: 320px; height: 220px; margin: 0 auto; border-radius: 8px; overflow: hidden; background:#000; border: 2.5px solid var(--gold-400)"></div>
-        <button class="btn btn-outline" onclick="Views['new-bill'].stopCameraScanner()" style="margin-top:16px; width:100%; height:42px; font-weight:600;">Cancel</button>
+        <div id="camera-scanner-view" style="width: 100%; max-width: 320px; height: 220px; margin: 0 auto; border-radius: 8px; overflow: hidden; background:#000; border: 2.5px solid var(--gold-400); transition: border-color 0.3s ease;"></div>
+        <div id="scanner-status" style="margin-top:12px; font-weight:700; font-size:14px; color:var(--gold-600); min-height:20px; transition: color 0.3s ease;">Scan a barcode...</div>
+        <button class="btn btn-outline" onclick="Views['new-bill'].stopCameraScanner()" style="margin-top:16px; width:100%; height:42px; font-weight:600;">Close Scanner</button>
       </div>
     `, '');
 
@@ -1856,6 +1857,9 @@ Views['new-bill'] = {
           }
         });
         Views['new-bill'].activeScanner = scanner;
+        Views['new-bill'].isScanningPaused = false;
+        Views['new-bill'].lastScannedSku = '';
+        Views['new-bill'].lastScannedTime = 0;
 
         scanner.start(
           { facingMode: "environment" },
@@ -1867,8 +1871,65 @@ Views['new-bill'] = {
             }
           },
           (decodedText) => {
-            Views['new-bill'].stopCameraScanner();
-            Billing.addProductBySku(decodedText);
+            const now = Date.now();
+            // Prevent scanning the exact same barcode within 2 seconds
+            if (decodedText === Views['new-bill'].lastScannedSku && (now - Views['new-bill'].lastScannedTime) < 2000) {
+              return;
+            }
+            if (Views['new-bill'].isScanningPaused) return;
+
+            Views['new-bill'].isScanningPaused = true;
+            Views['new-bill'].lastScannedSku = decodedText;
+            Views['new-bill'].lastScannedTime = now;
+
+            // Play synthetic beep sound
+            try {
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.type = 'sine';
+              osc.frequency.value = 1200; // 1.2 kHz crisp beep
+              gain.gain.setValueAtTime(0.15, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+              osc.start(ctx.currentTime);
+              osc.stop(ctx.currentTime + 0.12);
+            } catch(e) {}
+
+            // Try to add product
+            const success = Billing.addProductBySku(decodedText);
+            
+            const statusEl = document.getElementById('scanner-status');
+            const viewEl = document.getElementById('camera-scanner-view');
+            
+            if (success) {
+              const p = Store.getProducts().find(prod => 
+                prod.id.toLowerCase() === decodedText.trim().toLowerCase() || 
+                (prod.sku && prod.sku.toLowerCase() === decodedText.trim().toLowerCase())
+              );
+              if (statusEl) {
+                statusEl.style.color = '#16a34a';
+                statusEl.innerHTML = `✓ Added: ${p ? p.name : decodedText}`;
+              }
+              if (viewEl) viewEl.style.borderColor = '#16a34a';
+            } else {
+              if (statusEl) {
+                statusEl.style.color = '#dc2626';
+                statusEl.innerHTML = `⚠️ Not found: ${decodedText}`;
+              }
+              if (viewEl) viewEl.style.borderColor = '#dc2626';
+            }
+
+            // Resume scanning after 1.5 seconds
+            setTimeout(() => {
+              Views['new-bill'].isScanningPaused = false;
+              if (statusEl) {
+                statusEl.style.color = 'var(--gold-600)';
+                statusEl.innerHTML = 'Ready for next barcode...';
+              }
+              if (viewEl) viewEl.style.borderColor = 'var(--gold-400)';
+            }, 1500);
           },
           (err) => {
             // Ignore scan errors
