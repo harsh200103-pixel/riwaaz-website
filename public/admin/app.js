@@ -129,25 +129,25 @@ const Store = {
       const checkLoaded = () => { if (++loaded === 5) resolve(); };
       
       db.collection('bills').onSnapshot(snap => {
-        const bills = snap.docs.map(d => d.data());
+        const bills = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         Store.data.bills = bills;
         localStorage.setItem('cached_bills', JSON.stringify(bills));
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('products').onSnapshot(snap => {
-        const products = snap.docs.map(d => d.data());
+        const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         Store.data.products = products;
         localStorage.setItem('cached_products', JSON.stringify(products));
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('customers').onSnapshot(snap => {
-        const customers = snap.docs.map(d => d.data());
+        const customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         Store.data.customers = customers;
         localStorage.setItem('cached_customers', JSON.stringify(customers));
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
       });
       db.collection('returns').onSnapshot(snap => {
-        const returns = snap.docs.map(d => d.data());
+        const returns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         Store.data.returns = returns;
         localStorage.setItem('cached_returns', JSON.stringify(returns));
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
@@ -2116,8 +2116,13 @@ Views['bills'] = {
   },
 
   processDueClearance: (id, paymentMode) => {
+    console.log("processDueClearance triggering. id:", id, "mode:", paymentMode);
     const bill = Store.getBill(id);
-    if (!bill) return;
+    if (!bill) {
+      console.error("Bill not found in Store for ID:", id);
+      Toast.show("⚠️ Error: Bill not found in list.", "error", 4000);
+      return;
+    }
     
     const dueAmt = bill.payment.due;
     const amountInput = document.getElementById('due-pay-amount');
