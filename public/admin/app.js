@@ -1933,6 +1933,16 @@ Views['new-bill'] = {
 
 // ═══════════════════════════════ VIEW: ALL BILLS ══════
 Views['bills'] = {
+  viewSoldPhoto: (id) => {
+    const bill = Store.getBill(id);
+    if (!bill || !bill.soldSuitImage) return;
+    Modal.open('📸 Sold Suit Photo', `
+      <div style="text-align:center; padding:10px;">
+        <img src="${bill.soldSuitImage}" style="width:100%; max-height:70vh; object-fit:contain; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+      </div>
+    `, `<button class="btn btn-outline" onclick="Modal.close()" style="width:100%">Close</button>`);
+  },
+
   render: () => {
     const v = document.getElementById('app-view');
     const bills = Store.getBills();
@@ -1942,7 +1952,7 @@ Views['bills'] = {
         <td>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-weight:700;color:var(--gold-600)">${b.billNumber}</span>
-            ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="window.open('${b.soldSuitImage}', '_blank')" title="Click to view sold suit photo">` : ''}
+            ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="Views['bills'].viewSoldPhoto('${b.id}')" title="Click to view sold suit photo">` : ''}
           </div>
         </td>
         <td>
@@ -2034,7 +2044,7 @@ Views['bills'] = {
         <td>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-weight:700;color:var(--gold-600)">${b.billNumber}</span>
-            ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="window.open('${b.soldSuitImage}', '_blank')" title="Click to view sold suit photo">` : ''}
+            ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="Views['bills'].viewSoldPhoto('${b.id}')" title="Click to view sold suit photo">` : ''}
           </div>
         </td>
         <td>
@@ -2770,7 +2780,7 @@ Views['customers'] = {
           <div style="font-size:12px;color:var(--text-muted)">${H.formatDate(b.date)} · ${b.items.length} item${b.items.length!==1?'s':''}</div>
         </div>
         <div style="text-align:right; display:flex; gap:10px; align-items:center;">
-          ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:36px; height:36px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="window.open('${b.soldSuitImage}', '_blank')" title="Click to view full photo">` : ''}
+          ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:36px; height:36px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="Views['bills'].viewSoldPhoto('${b.id}')" title="Click to view full photo">` : ''}
           <div>
             <div style="font-weight:700">${H.fmt(b.total)}</div>
             <button class="btn btn-sm btn-whatsapp" onclick="Share.openShareModal(Store.getBill('${b.id}'))">Re-share</button>
