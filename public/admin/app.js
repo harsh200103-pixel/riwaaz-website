@@ -728,15 +728,19 @@ const Print = {
             
             <div style="border-top:1px dashed #000; margin:6px 0; margin-top:12px;"></div>
             
-            <!-- Thank you and QR Social code -->
-            <div style="text-align:center; margin-top:10px;">
-              <div style="font-family:'Cormorant Garamond', serif; font-size:14px; font-weight:700; font-style:italic; margin-bottom:2px; color:#000;">Thank You!</div>
-              <div style="font-size:8px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Visit us again at Riwaaz by Eshmira</div>
+            <!-- Thank you and Premium Boutique Brand Stamp -->
+            <div style="text-align:center; margin-top:16px;">
+              <div style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-weight:300;">✦ ✦ ✦</div>
+              <div style="font-family:'Cormorant Garamond', serif; font-size:16px; font-weight:700; font-style:italic; color:#000;">Thank You!</div>
+              <div style="font-size:8px; color:#444; text-transform:uppercase; letter-spacing:1px; margin-top:3px; margin-bottom:8px;">Visit us again at Riwaaz by Eshmira</div>
               
-              <div style="margin: 8px auto; display: inline-block; padding: 4px; border: 1px solid #ccc; background:#fff;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent('https://wa.me/919770496796')}" style="width:60px; height:60px; display:block;">
+              <div style="border-top:1px dotted #000; width:100%; margin:8px 0;"></div>
+              
+              <!-- Premium Boutique Label Sign-off -->
+              <div style="display:inline-block; border:1.5px solid #000; padding:6px 14px; margin-top:4px;">
+                <div style="font-family:'Cormorant Garamond', serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#000;">Riwaaz Luxury</div>
+                <div style="font-size:7px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-top:2px;">Original Indian Wear</div>
               </div>
-              <div style="font-size:7px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Scan to chat with us on WhatsApp</div>
             </div>
           </div>
         </body>
