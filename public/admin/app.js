@@ -1366,6 +1366,30 @@ const Billing = {
     Billing.calcTotals();
   },
 
+  addProductBySku: (sku) => {
+    if (!sku) return false;
+    const p = Store.getProducts().find(prod => prod.id === sku || prod.sku === sku);
+    if (p) {
+      // Remove empty rows first
+      const rows = document.querySelectorAll('.item-row');
+      rows.forEach(r => {
+        const desc = r.querySelector('.item-desc').value;
+        const price = r.querySelector('.item-price').value;
+        if (!desc && !price) r.remove();
+      });
+      
+      Billing.addItemRow(p.category, p.name, p.description || '', 1, p.price);
+      Toast.show(`✓ Added ${p.name}`, 'success');
+      
+      // Hide empty list message
+      document.getElementById('no-items-msg').classList.add('hidden');
+      return true;
+    } else {
+      Toast.show('⚠️ Item not found in Inventory', 'error');
+      return false;
+    }
+  },
+
   buildBill: () => {
     const name  = document.getElementById('cust-name')?.value.trim() || '';
     const phone = document.getElementById('cust-phone')?.value.trim() || '';
@@ -1488,9 +1512,12 @@ Views['new-bill'] = {
         <div class="bill-section">
           <div class="bill-section-header" style="flex-wrap:wrap;gap:16px;">
             <h3>🛍️ Items Purchased</h3>
-            <div style="display:flex; gap:12px; align-items:center; flex:1; min-width:200px;">
-              <input type="text" id="barcode-scanner-input" class="form-input" style="flex:1" placeholder="🔫 Scan Barcode or type ID and hit Enter..." autofocus>
-              <button class="btn btn-sm btn-gold" id="add-item-btn" onclick="Billing.addItemRow()">+ Add Manually</button>
+            <div style="display:flex; gap:8px; align-items:center; flex:1; min-width:200px; flex-wrap:wrap;">
+              <input type="text" id="barcode-scanner-input" class="form-input" style="flex:1; min-width:150px;" placeholder="🔫 Scan Barcode or type ID..." autofocus>
+              <button class="btn btn-sm btn-gold" onclick="Views['new-bill'].openCameraScanner()" style="display:flex; align-items:center; gap:4px; height:36px; padding:0 12px; font-size:12px; flex-shrink:0;">
+                📷 Scan Camera
+              </button>
+              <button class="btn btn-sm btn-outline" id="add-item-btn" onclick="Billing.addItemRow()" style="height:36px; padding:0 12px; font-size:12px; flex-shrink:0;">+ Add Manually</button>
             </div>
           </div>
           <div class="bill-section-body">
@@ -1608,25 +1635,7 @@ Views['new-bill'] = {
       if (e.key === 'Enter') {
         e.preventDefault();
         const sku = e.target.value.trim();
-        if (!sku) return;
-        const p = Store.getProducts().find(prod => prod.id === sku || prod.sku === sku);
-        if (p) {
-          // If there's a completely empty row, remove it first to keep things clean
-          const rows = document.querySelectorAll('.item-row');
-          rows.forEach(r => {
-            const desc = r.querySelector('.item-desc').value;
-            const price = r.querySelector('.item-price').value;
-            if (!desc && !price) r.remove();
-          });
-          
-          Billing.addItemRow(p.category, p.name, p.description || '', 1, p.price);
-          Toast.show(`✓ Added ${p.name}`, 'success');
-          
-          // Show items container msg logic
-          document.getElementById('no-items-msg').classList.add('hidden');
-        } else {
-          Toast.show('⚠️ Item not found in Inventory', 'error');
-        }
+        Billing.addProductBySku(sku);
         e.target.value = '';
         e.target.focus();
       }
@@ -1782,6 +1791,82 @@ Views['new-bill'] = {
     Views['new-bill'].clearSoldPhoto();
     Billing.calcTotals();
     if (addRow) Billing.addItemRow();
+  },
+
+  activeScanner: null,
+
+  openCameraScanner: () => {
+    if (typeof Html5Qrcode === 'undefined') {
+      Toast.show('⚙️ Loading scanner library...', '');
+      const script = document.createElement('script');
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js";
+      script.onload = () => Views['new-bill'].startCameraScanner();
+      script.onerror = () => Toast.show('⚠️ Failed to load scanner library. Please check your connection.', 'error');
+      document.head.appendChild(script);
+    } else {
+      Views['new-bill'].startCameraScanner();
+    }
+  },
+
+  startCameraScanner: () => {
+    Modal.open('📷 Mobile Camera Scanner', `
+      <div style="text-align:center; padding:10px;">
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Center the product barcode inside the scanner viewport below.</p>
+        <div id="camera-scanner-view" style="width: 100%; max-width: 320px; height: 200px; margin: 0 auto; border-radius: 8px; overflow: hidden; background:#000; border: 2.5px solid var(--gold-400)"></div>
+        <button class="btn btn-outline" onclick="Views['new-bill'].stopCameraScanner()" style="margin-top:16px; width:100%; height:42px; font-weight:600;">Cancel</button>
+      </div>
+    `, '');
+
+    setTimeout(() => {
+      try {
+        const scanner = new Html5Qrcode("camera-scanner-view");
+        Views['new-bill'].activeScanner = scanner;
+
+        scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 15,
+            qrbox: (width, height) => {
+              // Return wide rectangular bounding box optimized for barcodes
+              return { width: Math.min(260, width * 0.8), height: Math.min(110, height * 0.5) };
+            }
+          },
+          (decodedText) => {
+            Views['new-bill'].stopCameraScanner();
+            Billing.addProductBySku(decodedText);
+          },
+          (err) => {
+            // Ignore frame scan errors
+          }
+        ).catch(err => {
+          console.error("Camera scan start error:", err);
+          Toast.show('⚠️ Camera access denied or not available. Please allow camera permissions.', 'error', 4000);
+          Modal.close();
+        });
+      } catch(e) {
+        console.error("Scanner init error:", e);
+        Toast.show('⚠️ Could not open camera', 'error');
+      }
+    }, 300);
+  },
+
+  stopCameraScanner: () => {
+    if (Views['new-bill'].activeScanner) {
+      try {
+        Views['new-bill'].activeScanner.stop().then(() => {
+          Views['new-bill'].activeScanner = null;
+          Modal.close();
+        }).catch(e => {
+          Views['new-bill'].activeScanner = null;
+          Modal.close();
+        });
+      } catch (e) {
+        Views['new-bill'].activeScanner = null;
+        Modal.close();
+      }
+    } else {
+      Modal.close();
+    }
   }
 };
 
