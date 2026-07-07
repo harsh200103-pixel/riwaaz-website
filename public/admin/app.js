@@ -2498,19 +2498,19 @@ Views['inventory'] = {
             body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; }
             .label-container {
               display: flex; flex-direction: column; align-items: center; justify-content: center;
-              width: 50mm; height: 30mm; padding: 2mm 3mm; box-sizing: border-box;
-              border: 1.5px solid #000; border-radius: 4px; position: relative; overflow: hidden;
+              width: 50mm; height: 30mm; padding: 0.5mm 2mm; box-sizing: border-box;
+              border: 1.2px solid #000; border-radius: 4px; position: relative; overflow: hidden;
             }
             .label-brand {
               font-family: 'Cormorant Garamond', serif; font-size: 10px; font-weight: 700; 
-              text-transform: uppercase; letter-spacing: 2px; margin-bottom: 2px;
+              text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1px;
               border-bottom: 1px dotted #000; width: 100%; text-align: center; padding-bottom: 1px;
             }
             .label-title { 
               font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; margin-top: 2px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; margin-top: 1px;
             }
-            .label-price { font-size: 9px; font-weight: 700; margin-top: 1px; letter-spacing: 0.5px; }
+            .label-price { font-size: 8px; font-weight: 700; margin-top: 0px; letter-spacing: 0.5px; }
           </style>
         </head>
         <body>
@@ -2564,7 +2564,7 @@ Views['inventory'] = {
       const el = iframeDoc.getElementById('barcode-single');
       if (el) {
         try { 
-          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 35, displayValue: true, fontSize: 11, margin: 0 }); 
+          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 25, displayValue: true, fontSize: 8, margin: 2 }); 
         } catch(e) { console.error("Error drawing barcode:", e); }
       }
     }
