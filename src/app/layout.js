@@ -7,6 +7,10 @@ import NavCartButton from './components/NavCartButton';
 export const metadata = {
   title: 'Riwaaz by Eshmira',
   description: 'Premium boutique in Indore',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({ children }) {
