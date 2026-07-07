@@ -17,7 +17,7 @@ const CONFIG = {
   currency:  '₹',
   categories: ['Stitched Suit', 'Unstitched Suit', 'Co-ord Set', '3 Piece Suit', '2 Piece Suit', 'Anarkali', 'One Piece', 'Rumalla Saheb', 'Kurtis', 'Customised'],
   fabrics: ['Cotton', 'Silk', 'Crepe', 'Velvet', 'Georgette', 'Chiffon', 'Other'],
-  paymentModes: ['Cash', 'UPI', 'Card', 'Pending'],
+  paymentModes: ['Cash', 'UPI', 'Card', 'Split', 'Pending'],
   lowStockThreshold: 5
 };
 
@@ -702,6 +702,8 @@ const Print = {
             <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; border-top:1px dotted #000; padding-top:3px; margin-top:3px;">
               <span>GRAND TOTAL:</span><span>₹${bill.total.toLocaleString('en-IN')}</span>
             </div>
+            <div style="display:flex; justify-content:space-between;"><span>Amount Paid:</span><span>₹${(bill.payment.amountPaid || 0).toLocaleString('en-IN')}</span></div>
+            ${bill.payment.due > 0 ? `<div style="display:flex; justify-content:space-between; font-weight:700; color:#c00;"><span>BALANCE DUE:</span><span>₹${bill.payment.due.toLocaleString('en-IN')}</span></div>` : ''}
             
             <div style="font-size:8px; color:#000; margin-top:4px; padding:3px; border:1px solid #000; display:inline-block; text-transform:uppercase; font-weight:700;">
               ${bill.payment.status === 'paid' ? '✓ Paid' : bill.payment.status === 'partial' ? '🔶 Partial' : '⏳ Pending'} - ${bill.payment.mode}
@@ -1357,6 +1359,13 @@ const Billing = {
     const due = Math.max(0, total - amountPaid);
     const pStatus = activeMode === 'Pending' ? 'pending' : (due > 0 ? 'partial' : 'paid');
 
+    let finalMode = activeMode;
+    if (activeMode === 'Split') {
+      const cashVal = parseFloat(document.getElementById('split-cash')?.value) || 0;
+      const onlineVal = parseFloat(document.getElementById('split-online')?.value) || 0;
+      finalMode = `Split (Cash: ₹${cashVal} + UPI/Card: ₹${onlineVal})`;
+    }
+
     const isOnline = document.getElementById('is-online-order')?.checked || false;
     const address = document.getElementById('cust-address')?.value.trim() || '';
     const pincode = document.getElementById('cust-pincode')?.value.trim() || '';
@@ -1372,7 +1381,7 @@ const Billing = {
       subtotal,
       discount,
       total,
-      payment:     { mode: activeMode, amountPaid, due, status: pStatus },
+      payment:     { mode: finalMode, amountPaid, due, status: pStatus },
       notes,
       soldSuitImage: Views['new-bill'].soldPhotoBase64 || '',
       status:      'active'
@@ -1502,7 +1511,7 @@ Views['new-bill'] = {
               <div class="payment-modes">
                 ${CONFIG.paymentModes.map(m => `
                   <button class="payment-mode-btn ${m==='Cash'?'active':''}" data-mode="${m}" onclick="Views['new-bill'].selectPayment('${m}')">
-                    ${m==='Cash'?'💵':m==='UPI'?'📲':m==='Card'?'💳':'⏳'} ${m}
+                    ${m==='Cash'?'💵':m==='UPI'?'📲':m==='Card'?'💳':m==='Split'?'🤝':'⏳'} ${m}
                   </button>`).join('')}
               </div>
             </div>
@@ -1512,17 +1521,32 @@ Views['new-bill'] = {
               <input id="amount-paid" class="form-input" type="number" min="0" placeholder="Enter amount received">
             </div>
 
+            <!-- Split Payment Details Breakdown -->
+            <div class="form-group hidden" id="split-details-group" style="background:var(--cream-50); padding:12px; border-radius:8px; border:1.5px solid var(--cream-200); margin-top:8px">
+              <label class="form-label" style="font-weight:700">Split Payment Breakdown</label>
+              <div style="display:flex; gap:12px; margin-top:4px">
+                <div style="flex:1">
+                  <label style="font-size:11px; color:var(--text-muted)">Cash Portion (₹)</label>
+                  <input id="split-cash" class="form-input" type="number" placeholder="0" min="0" oninput="Views['new-bill'].calcSplitTotal()">
+                </div>
+                <div style="flex:1">
+                  <label style="font-size:11px; color:var(--text-muted)">UPI / Card Portion (₹)</label>
+                  <input id="split-online" class="form-input" type="number" placeholder="0" min="0" oninput="Views['new-bill'].calcSplitTotal()">
+                </div>
+              </div>
+            </div>
+
             <div class="form-group">
               <label class="form-label">Notes (optional)</label>
               <textarea id="bill-notes" class="form-textarea" placeholder="Any special notes for this bill..."></textarea>
             </div>
 
-            <!-- Optional Sold Suit Photo Attachment -->
+            <!-- Optional Sold Suit Photo Attachment (Camera Only) -->
             <div class="form-group" style="margin-top:16px; padding:16px; border: 1.5px dashed var(--gold-300); border-radius:10px; background:var(--gold-100)">
               <label class="form-label" style="font-weight:700; color:var(--dark-800); display:flex; align-items:center; gap:6px">
                 📸 Attach Sold Suit Photo <span style="font-weight:400;color:var(--text-muted);font-size:12px">(Optional)</span>
               </label>
-              <input type="file" id="bill-sold-photo" class="form-input" accept="image/*" style="padding: 8px; background: #fff; height: auto;" onchange="Views['new-bill'].handleSoldPhotoSelection(event)">
+              <input type="file" id="bill-sold-photo" class="form-input" accept="image/*" capture="environment" style="padding: 8px; background: #fff; height: auto;" onchange="Views['new-bill'].handleSoldPhotoSelection(event)">
               <div id="sold-photo-preview-container" style="display: none; margin-top: 10px; position:relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; border:1px solid var(--gold-300)">
                 <img id="sold-photo-preview" src="" style="width:100%; height:100%; object-fit:cover;">
                 <button onclick="Views['new-bill'].clearSoldPhoto()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:white; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:10px; border:none; cursor:pointer;">✕</button>
@@ -1624,13 +1648,38 @@ Views['new-bill'] = {
   selectPayment: (mode) => {
     document.querySelectorAll('.payment-mode-btn').forEach(b => b.classList.remove('active'));
     document.querySelector(`.payment-mode-btn[data-mode="${mode}"]`)?.classList.add('active');
+    
     const apg = document.getElementById('amount-paid-group');
+    const sdg = document.getElementById('split-details-group');
+    
     if (mode === 'Pending') {
       apg.classList.add('hidden');
+      if (sdg) sdg.classList.add('hidden');
       document.getElementById('amount-paid').value = '0';
+    } else if (mode === 'Split') {
+      apg.classList.remove('hidden');
+      if (sdg) sdg.classList.remove('hidden');
+      document.getElementById('amount-paid').readOnly = true;
+      document.getElementById('amount-paid').placeholder = 'Calculated from split';
+      Views['new-bill'].calcSplitTotal();
     } else {
       apg.classList.remove('hidden');
+      if (sdg) sdg.classList.add('hidden');
+      document.getElementById('amount-paid').readOnly = false;
+      document.getElementById('amount-paid').placeholder = 'Enter amount received';
     }
+  },
+
+  calcSplitTotal: () => {
+    const cashVal = parseFloat(document.getElementById('split-cash')?.value) || 0;
+    const onlineVal = parseFloat(document.getElementById('split-online')?.value) || 0;
+    const totalPaid = cashVal + onlineVal;
+    
+    const amountPaidInput = document.getElementById('amount-paid');
+    if (amountPaidInput) {
+      amountPaidInput.value = totalPaid;
+    }
+    Billing.calcTotals();
   },
 
   generateAndShare: () => {
@@ -1693,6 +1742,21 @@ Views['new-bill'] = {
     document.getElementById('no-items-msg').classList.remove('hidden');
     document.querySelectorAll('.payment-mode-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.payment-mode-btn[data-mode="Cash"]')?.classList.add('active');
+    
+    const splitCash = document.getElementById('split-cash');
+    if (splitCash) splitCash.value = '';
+    const splitOnline = document.getElementById('split-online');
+    if (splitOnline) splitOnline.value = '';
+    
+    const sdg = document.getElementById('split-details-group');
+    if (sdg) sdg.classList.add('hidden');
+    
+    const amountPaidInput = document.getElementById('amount-paid');
+    if (amountPaidInput) {
+      amountPaidInput.readOnly = false;
+      amountPaidInput.placeholder = 'Enter amount received';
+    }
+
     Views['new-bill'].clearSoldPhoto();
     Billing.calcTotals();
     if (addRow) Billing.addItemRow();
