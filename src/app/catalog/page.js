@@ -80,10 +80,16 @@ export default function CatalogPage() {
                 <Link href={`/catalog/${suit.id}`} key={suit.id} className={styles.productCard} style={{ position: 'relative' }}>
                   <div className={styles.imageWrapper} style={{ position: 'relative' }}>
                     <img src={suit.images && suit.images.length > 0 ? suit.images[0] : suit.image} alt={suit.name} className={styles.productImage} style={suit.soldOut ? { filter: 'grayscale(60%)', opacity: 0.7 } : {}} />
-                    {suit.soldOut && (
+                    {suit.soldOut ? (
                       <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#DC2626', color: '#fff', padding: '4px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                         Sold Out
                       </div>
+                    ) : (
+                      suit.stock === 1 && (
+                        <div style={{ position: 'absolute', top: '12px', left: '12px', background: '#B8860B', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          ✨ Unique Piece
+                        </div>
+                      )
                     )}
                   </div>
                   <div className={styles.productInfo}>

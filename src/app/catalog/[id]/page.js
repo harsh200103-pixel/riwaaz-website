@@ -77,11 +77,6 @@ export default async function ProductDetailPage({ params }) {
 
   const catLabel = CATEGORIES.find(c => c.id === suit.category)?.label || suit.category;
 
-  // WhatsApp Message Generation
-  const productUrl = `https://riwaaz-website.vercel.app/catalog/${suit.id}`;
-  const waMsg = `Hi! I want to buy the "${suit.name}" (ID: ${suit.id}) listed on your website: ${productUrl}`;
-  const waLink = `https://wa.me/919770496796?text=${encodeURIComponent(waMsg)}`;
-
   return (
     <main className={`container ${styles.detailsContainer}`}>
       <div style={{ flex: 1 }}>
@@ -92,6 +87,13 @@ export default async function ProductDetailPage({ params }) {
         <div className={styles.detailsCat}>{catLabel}</div>
         <h1 className={styles.detailsTitle}>{suit.name}</h1>
         <div className={styles.detailsPrice}>₹{suit.price.toLocaleString('en-IN')}</div>
+        
+        {/* Unique Piece Highlight Badge */}
+        {!suit.soldOut && suit.stock === 1 && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#FDF6E3', border: '1px solid #E8CB7A', color: '#B8860B', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, marginBottom: '20px' }}>
+            ✨ Exclusive Unique Piece: Only 1 available in stock
+          </div>
+        )}
         
         <div className={styles.detailsFabric}>Fabric: {suit.fabric}</div>
         {suit.size && <div className={styles.detailsFabric}>Size: {suit.size}</div>}
@@ -115,12 +117,7 @@ export default async function ProductDetailPage({ params }) {
               <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>
                 Add it to your cart to purchase multiple items, or inquire directly on WhatsApp.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <AddToCartButton product={suit} />
-                <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ width: '100%', border: '1px solid var(--gold-300)' }}>
-                  💬 Buy Directly on WhatsApp
-                </a>
-              </div>
+              <AddToCartButton product={suit} />
             </>
           )}
         </div>

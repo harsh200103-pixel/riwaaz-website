@@ -26,6 +26,9 @@ export default function CartDrawer() {
       if (item.selectedSize) {
         message += `   - Size: ${item.selectedSize}\n`;
       }
+      if (item.selectedColor) {
+        message += `   - Color: ${item.selectedColor}\n`;
+      }
       message += `   - Link: ${productUrl}\n\n`;
     });
 
@@ -60,7 +63,7 @@ export default function CartDrawer() {
           ) : (
             <div className="cart-items-list">
               {cartItems.map((item) => (
-                <div key={`${item.id}-${item.selectedSize}`} className="cart-item">
+                <div key={`${item.id}-${item.selectedSize}-${item.selectedColor || ''}`} className="cart-item">
                   <div className="cart-item-img-wrapper">
                     {item.image ? (
                       <img src={item.image} alt={item.name} className="cart-item-img" />
@@ -73,6 +76,7 @@ export default function CartDrawer() {
                     <div className="cart-item-meta">
                       {item.category && <span>{item.category}</span>}
                       {item.selectedSize && <span>Size: {item.selectedSize}</span>}
+                      {item.selectedColor && <span>Color: {item.selectedColor}</span>}
                     </div>
                     <div className="cart-item-price">
                       ₹{item.price.toLocaleString('en-IN')}
@@ -80,7 +84,7 @@ export default function CartDrawer() {
                     <div className="cart-item-actions" style={{ justifyContent: 'flex-end' }}>
                       <button
                         className="cart-item-remove"
-                        onClick={() => removeFromCart(item.id, item.selectedSize)}
+                        onClick={() => removeFromCart(item.id, item.selectedSize, item.selectedColor)}
                       >
                         Remove
                       </button>

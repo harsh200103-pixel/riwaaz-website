@@ -1375,6 +1375,7 @@ const Billing = {
       total,
       payment:     { mode: activeMode, amountPaid, due, status: pStatus },
       notes,
+      soldSuitImage: Views['new-bill'].soldPhotoBase64 || '',
       status:      'active'
     };
   }
@@ -1516,6 +1517,18 @@ Views['new-bill'] = {
               <label class="form-label">Notes (optional)</label>
               <textarea id="bill-notes" class="form-textarea" placeholder="Any special notes for this bill..."></textarea>
             </div>
+
+            <!-- Optional Sold Suit Photo Attachment -->
+            <div class="form-group" style="margin-top:16px; padding:16px; border: 1.5px dashed var(--gold-300); border-radius:10px; background:var(--gold-100)">
+              <label class="form-label" style="font-weight:700; color:var(--dark-800); display:flex; align-items:center; gap:6px">
+                📸 Attach Sold Suit Photo <span style="font-weight:400;color:var(--text-muted);font-size:12px">(Optional)</span>
+              </label>
+              <input type="file" id="bill-sold-photo" class="form-input" accept="image/*" style="padding: 8px; background: #fff; height: auto;" onchange="Views['new-bill'].handleSoldPhotoSelection(event)">
+              <div id="sold-photo-preview-container" style="display: none; margin-top: 10px; position:relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; border:1px solid var(--gold-300)">
+                <img id="sold-photo-preview" src="" style="width:100%; height:100%; object-fit:cover;">
+                <button onclick="Views['new-bill'].clearSoldPhoto()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:white; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:10px; border:none; cursor:pointer;">✕</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1638,6 +1651,39 @@ Views['new-bill'] = {
     Toast.show('✓ Bill saved successfully!', 'success', 2500);
   },
 
+  soldPhotoBase64: '',
+
+  handleSoldPhotoSelection: async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const container = document.getElementById('sold-photo-preview-container');
+      const img = document.getElementById('sold-photo-preview');
+      
+      const compressedDataUrl = await H.compressImage(file, 400, 0.5);
+      Views['new-bill'].soldPhotoBase64 = compressedDataUrl;
+      
+      if (img && container) {
+        img.src = compressedDataUrl;
+        container.style.display = 'block';
+      }
+      Toast.show('✓ Sold suit photo attached!', 'success');
+    } catch (err) {
+      console.error("Photo compression error:", err);
+      Toast.show('⚠️ Error capturing/compressing photo', 'error');
+    }
+  },
+
+  clearSoldPhoto: () => {
+    Views['new-bill'].soldPhotoBase64 = '';
+    const fileInput = document.getElementById('bill-sold-photo');
+    if (fileInput) fileInput.value = '';
+    const container = document.getElementById('sold-photo-preview-container');
+    if (container) container.style.display = 'none';
+    const img = document.getElementById('sold-photo-preview');
+    if (img) img.src = '';
+  },
+
   reset: (addRow = true) => {
     document.getElementById('cust-name').value = '';
     document.getElementById('cust-phone').value = '';
@@ -1648,6 +1694,7 @@ Views['new-bill'] = {
     document.getElementById('no-items-msg').classList.remove('hidden');
     document.querySelectorAll('.payment-mode-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.payment-mode-btn[data-mode="Cash"]')?.classList.add('active');
+    Views['new-bill'].clearSoldPhoto();
     Billing.calcTotals();
     if (addRow) Billing.addItemRow();
   }
@@ -1661,7 +1708,12 @@ Views['bills'] = {
 
     const rows = bills.map(b => `
       <tr>
-        <td><span style="font-weight:700;color:var(--gold-600)">${b.billNumber}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:700;color:var(--gold-600)">${b.billNumber}</span>
+            ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="window.open('${b.soldSuitImage}', '_blank')" title="Click to view sold suit photo">` : ''}
+          </div>
+        </td>
         <td>
           <div style="font-weight:600">${H.escHtml(b.customer.name || 'Walk-in Customer')}</div>
           ${b.customer.phone ? `<div style="font-size:11px;color:var(--text-muted)">${b.customer.phone}</div>` : ''}
@@ -1745,7 +1797,12 @@ Views['bills'] = {
     if (!tbody) return;
     tbody.innerHTML = bills.map(b => `
       <tr>
-        <td><span style="font-weight:700;color:var(--gold-600)">${b.billNumber}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:700;color:var(--gold-600)">${b.billNumber}</span>
+            ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="window.open('${b.soldSuitImage}', '_blank')" title="Click to view sold suit photo">` : ''}
+          </div>
+        </td>
         <td>
           <div style="font-weight:600">${H.escHtml(b.customer.name || 'Walk-in Customer')}</div>
           ${b.customer.phone ? `<div style="font-size:11px;color:var(--text-muted)">${b.customer.phone}</div>` : ''}
@@ -2042,15 +2099,8 @@ Views['inventory'] = {
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">SKU / Code</label>
-      <input id="prod-sku" class="form-input" placeholder="e.g. US-001" value="${H.escHtml(p?.sku||'')}">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Product Photos <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(JPEG, compressed automatically)</span></label>
-      <input type="file" id="prod-images" class="form-input" multiple accept="image/*" style="padding: 8px; border: 1px dashed var(--cream-300); background: var(--gray-50); height: auto;" onchange="Views.inventory.handleImageSelection(event)">
-      <div id="image-previews-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-        ${Views.inventory.renderImagePreviews()}
-      </div>
+      <label class="form-label">Available Colors <span style="font-weight:400;color:var(--text-light)">(optional, comma-separated for multiple colors)</span></label>
+      <input id="prod-colors" class="form-input" placeholder="e.g. Red, Blue, Pink" value="${p?.colors ? p.colors.join(', ') : ''}">
     </div>
     <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -2073,6 +2123,8 @@ Views['inventory'] = {
     const sku   = document.getElementById('prod-sku')?.value.trim();
     const isShopOnly = document.getElementById('prod-shoponly')?.checked;
     const soldOut = document.getElementById('prod-soldout')?.checked || false;
+    const colorsInput = document.getElementById('prod-colors')?.value.trim();
+    const colors = colorsInput ? colorsInput.split(',').map(c => c.trim()).filter(Boolean) : [];
     
     if (!name) { Toast.show('⚠️ Product name is required', 'error'); return; }
     
@@ -2085,7 +2137,7 @@ Views['inventory'] = {
     const p = {
       name, category: cat, fabric, description: desc, price,
       stock: isNaN(stock) ? null : stock < 0 ? null : stock,
-      sku, isShopOnly, images, soldOut
+      sku, isShopOnly, images, soldOut, colors
     };
 
     const saveBtn = document.getElementById('btn-save-product');
@@ -2443,9 +2495,12 @@ Views['customers'] = {
           <div style="font-weight:700;color:var(--gold-600)">${b.billNumber}</div>
           <div style="font-size:12px;color:var(--text-muted)">${H.formatDate(b.date)} · ${b.items.length} item${b.items.length!==1?'s':''}</div>
         </div>
-        <div style="text-align:right">
-          <div style="font-weight:700">${H.fmt(b.total)}</div>
-          <button class="btn btn-sm btn-whatsapp" onclick="Share.openShareModal(Store.getBill('${b.id}'))">Re-share</button>
+        <div style="text-align:right; display:flex; gap:10px; align-items:center;">
+          ${b.soldSuitImage ? `<img src="${b.soldSuitImage}" style="width:36px; height:36px; border-radius:4px; object-fit:cover; border:1px solid var(--cream-300); cursor:pointer;" onclick="window.open('${b.soldSuitImage}', '_blank')" title="Click to view full photo">` : ''}
+          <div>
+            <div style="font-weight:700">${H.fmt(b.total)}</div>
+            <button class="btn btn-sm btn-whatsapp" onclick="Share.openShareModal(Store.getBill('${b.id}'))">Re-share</button>
+          </div>
         </div>
       </div>`).join('') || '<p style="color:var(--text-muted);text-align:center;padding:16px">No bill history.</p>';
 

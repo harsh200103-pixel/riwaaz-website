@@ -28,11 +28,11 @@ export function CartProvider({ children }) {
     }
   }, [cartItems, isInitialized]);
 
-  const addToCart = (product, selectedSize = '') => {
+  const addToCart = (product, selectedSize = '', selectedColor = '') => {
     setCartItems((prevItems) => {
-      // Find if item already exists with the same ID and selected size
+      // Find if item already exists with the same ID, selected size, and selected color
       const existingIdx = prevItems.findIndex(
-        (item) => item.id === product.id && item.selectedSize === selectedSize
+        (item) => item.id === product.id && item.selectedSize === selectedSize && item.selectedColor === selectedColor
       );
 
       if (existingIdx > -1) {
@@ -54,6 +54,7 @@ export function CartProvider({ children }) {
           fabric: product.fabric,
           image: img,
           selectedSize: selectedSize || product.size || '',
+          selectedColor: selectedColor || '',
           quantity: 1,
         },
       ];
@@ -63,10 +64,10 @@ export function CartProvider({ children }) {
     setIsCartOpen(true);
   };
 
-  const removeFromCart = (productId, selectedSize = '') => {
+  const removeFromCart = (productId, selectedSize = '', selectedColor = '') => {
     setCartItems((prevItems) =>
       prevItems.filter(
-        (item) => !(item.id === productId && item.selectedSize === selectedSize)
+        (item) => !(item.id === productId && item.selectedSize === selectedSize && item.selectedColor === selectedColor)
       )
     );
   };
