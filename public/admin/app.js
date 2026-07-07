@@ -879,11 +879,19 @@ const Print = {
         <head>
           <title>${document.title}</title>
           <style>
-            body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page {
+              size: 4in 6in;
+              margin: 0;
+            }
+            body, html { 
+              margin: 0; padding: 0; background: white; 
+              width: 4in; height: 6in; overflow: hidden;
+              -webkit-print-color-adjust: exact; print-color-adjust: exact; 
+            }
           </style>
         </head>
         <body>
-          <div style="font-family:Arial,sans-serif;width:4in;height:6in;padding:24px;border:2px solid #000;box-sizing:border-box;margin:0 auto;position:relative">
+          <div style="font-family:Arial,sans-serif;width:4in;height:6in;padding:24px;border:2px solid #000;box-sizing:border-box;position:relative;background:white">
             
             <!-- From Section -->
             <div style="border-bottom:2px solid #000;padding-bottom:16px;margin-bottom:16px">
