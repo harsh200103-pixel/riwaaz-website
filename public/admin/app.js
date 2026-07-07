@@ -733,14 +733,6 @@ const Print = {
               <div style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-weight:300;">✦ ✦ ✦</div>
               <div style="font-family:'Cormorant Garamond', serif; font-size:16px; font-weight:700; font-style:italic; color:#000;">Thank You!</div>
               <div style="font-size:8px; color:#444; text-transform:uppercase; letter-spacing:1px; margin-top:3px; margin-bottom:8px;">Visit us again at Riwaaz by Eshmira</div>
-              
-              <div style="border-top:1px dotted #000; width:100%; margin:8px 0;"></div>
-              
-              <!-- Premium Boutique Label Sign-off -->
-              <div style="display:inline-block; border:1.5px solid #000; padding:6px 14px; margin-top:4px;">
-                <div style="font-family:'Cormorant Garamond', serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#000;">Riwaaz Luxury</div>
-                <div style="font-size:7px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-top:2px;">Original Indian Wear</div>
-              </div>
             </div>
           </div>
         </body>
