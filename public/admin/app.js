@@ -510,7 +510,6 @@ _For queries: ${CONFIG.phone1}_`;
   printAndShare: async (bill, type) => {
     localStorage.setItem('printerType', type);
     Print.bill(bill);
-    await Share.whatsapp(bill);
   },
 
   openShareModal: (bill) => {
