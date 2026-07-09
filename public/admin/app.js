@@ -15,7 +15,7 @@ const CONFIG = {
   address:   '50/2, Shivam Apartment, Bholaram Ustad Marg, Indore',
   city:      'Indore',
   currency:  '₹',
-  categories: ['Stitched Suit', 'Unstitched Suit', 'Co-ord Set', '3 Piece Suit', '2 Piece Suit', 'Anarkali', 'One Piece', 'Rumalla Saheb', 'Kurtis', 'Customised'],
+  categories: ['Unstitched Suit', 'Stitched Suit', 'Co-ord Set', '3 Piece Suit', '2 Piece Suit', 'Anarkali', 'One Piece', 'Rumalla Saheb', 'Kurtis', 'Customised'],
   fabrics: ['Cotton', 'Silk', 'Crepe', 'Velvet', 'Georgette', 'Chiffon', 'Other'],
   paymentModes: ['Cash', 'UPI', 'Card', 'Split', 'Pending'],
   lowStockThreshold: 5
@@ -1492,20 +1492,41 @@ const Billing = {
     return { subtotal, discount, total };
   },
 
-  addItemRow: (cat = '', desc = '', details = '', qty = 1, price = '') => {
+  addItemRow: (cat = 'Unstitched Suit', desc = '', details = '', qty = 1, price = '') => {
+    if (!cat) cat = 'Unstitched Suit';
     const list = document.getElementById('items-container');
     const div  = document.createElement('div');
     div.className = 'item-row';
     div.innerHTML = `
-      <select class="form-select item-cat">
-        ${CONFIG.categories.map(c => `<option ${c===cat?'selected':''}>${c}</option>`).join('')}
-      </select>
-      <input class="form-input item-desc" placeholder="Item name (e.g. Black Georgette Suit)" value="${H.escHtml(desc)}">
-      <input class="form-input item-details" list="fabric-suggestions" placeholder="Colour / Fabric / Design details" value="${H.escHtml(details)}">
-      <input class="form-input item-qty"   type="number" min="1" value="${qty}" style="width:100%">
-      <input class="form-input item-price" type="number" min="0" placeholder="Price ₹" value="${price}" style="width:100%">
-      <div class="item-row-total">${H.fmt((qty||1)*(parseFloat(price)||0))}</div>
-      <button class="remove-item-btn" onclick="this.closest('.item-row').remove();Billing.calcTotals()">×</button>`;
+      <div class="item-col item-col-cat">
+        <label class="mobile-only-label">Category</label>
+        <select class="form-select item-cat" style="height:44px;font-size:14px;font-weight:600;">
+          ${CONFIG.categories.map(c => `<option ${c===cat?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="item-col item-col-desc">
+        <label class="mobile-only-label">Item Name</label>
+        <input class="form-input item-desc" placeholder="Item name (e.g. Black Georgette Suit)" value="${H.escHtml(desc)}" style="height:44px;font-size:14px;">
+      </div>
+      <div class="item-col item-col-details">
+        <label class="mobile-only-label">Colour / Details (Optional)</label>
+        <input class="form-input item-details" list="fabric-suggestions" placeholder="Colour / Fabric / Design (Optional)" value="${H.escHtml(details)}" style="height:44px;font-size:14px;">
+      </div>
+      <div class="item-col item-col-qty">
+        <label class="mobile-only-label">Qty</label>
+        <input class="form-input item-qty" type="number" min="1" value="${qty}" style="height:44px;font-size:15px;font-weight:700;width:100%">
+      </div>
+      <div class="item-col item-col-price">
+        <label class="mobile-only-label">Price ₹</label>
+        <input class="form-input item-price" type="number" min="0" placeholder="Price ₹" value="${price}" style="height:44px;font-size:15px;font-weight:700;width:100%">
+      </div>
+      <div class="item-col item-col-total" style="display:flex;align-items:center;justify-content:space-between;width:100%">
+        <span class="mobile-only-label" style="font-size:13px;color:var(--text-muted)">Item Total:</span>
+        <div class="item-row-total" style="font-size:16px;font-weight:800;color:var(--gold-600)">${H.fmt((qty||1)*(parseFloat(price)||0))}</div>
+      </div>
+      <div class="item-col item-col-remove">
+        <button class="remove-item-btn" onclick="this.closest('.item-row').remove();Billing.calcTotals()" title="Remove Item">×</button>
+      </div>`;
     div.querySelectorAll('input, select').forEach(el => el.addEventListener('input', Billing.calcTotals));
     list.appendChild(div);
     Billing.calcTotals();
