@@ -25,6 +25,38 @@ const CONFIG = {
 const H = {
   fmt: (n) => CONFIG.currency + Number(n || 0).toLocaleString('en-IN'),
   fmtNum: (n) => Number(n || 0).toLocaleString('en-IN'),
+  beep: (success = true) => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (success) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, ctx.currentTime);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.08);
+      } else {
+        [0, 0.12].forEach(delay => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, ctx.currentTime + delay);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.08);
+        });
+      }
+    } catch (e) {
+      console.warn("Audio beep error:", e);
+    }
+  },
   today: () => new Date().toISOString().split('T')[0],
   formatDate: (d) => {
     const date = new Date(d);
@@ -1546,6 +1578,7 @@ const Billing = {
         if (!desc && !price) r.remove();
       });
       
+      H.beep(true);
       Billing.addItemRow(p.category, p.name, p.description || '', 1, p.price);
       Toast.show(`✓ Added ${p.name}`, 'success');
       
@@ -1553,6 +1586,7 @@ const Billing = {
       document.getElementById('no-items-msg').classList.add('hidden');
       return true;
     } else {
+      H.beep(false);
       Toast.show('⚠️ Item not found in Inventory', 'error');
       return false;
     }
