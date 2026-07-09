@@ -1208,15 +1208,13 @@ Views.dashboard = {
           <div class="stat-sub">${bills.length} total bills</div>
           <div class="stat-icon">📈</div>
         </div>
-        <div class="stat-card warning">
-          <div class="stat-label">Low Stock Items</div>
-          <div class="stat-value">${lowStock}</div>
-          <div class="stat-sub">${lowStock > 0 ? 'Need restocking' : 'All good!'}</div>
-          <div class="stat-icon">📦</div>
+        <div class="stat-card warning" style="cursor:pointer" onclick="Router.go('bills'); setTimeout(() => Views.bills.filterStatus('partial'), 100)" title="Click to view all unpaid / partial bills">
+          <div class="stat-label">Pending Collection</div>
+          <div class="stat-value">${H.fmt(overallBreakdown.pending)}</div>
+          <div class="stat-sub">Click to view unpaid bills</div>
+          <div class="stat-icon">⏳</div>
         </div>
       </div>
-
-      ${lowStockAlert}
 
       <!-- Payment Mode Collections Breakdown -->
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin: 24px 0;">
