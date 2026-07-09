@@ -1468,7 +1468,7 @@ const Billing = {
         details:     row.querySelector('.item-details')?.value || '',
         qty,
         price,
-        total: qty * price
+        total: price
       };
     });
   },
@@ -1515,12 +1515,12 @@ const Billing = {
         <input class="form-input item-qty" type="number" min="1" value="${qty}" style="height:44px;font-size:15px;font-weight:700;width:100%">
       </div>
       <div class="item-col item-col-price">
-        <label class="mobile-only-label">Price ₹</label>
-        <input class="form-input item-price" type="number" min="0" placeholder="Price ₹" value="${price}" style="height:44px;font-size:15px;font-weight:700;width:100%">
+        <label class="mobile-only-label">Amount ₹</label>
+        <input class="form-input item-price" type="number" min="0" placeholder="Amount ₹" value="${price}" style="height:44px;font-size:15px;font-weight:700;width:100%">
       </div>
       <div class="item-col item-col-total" style="display:flex;align-items:center;justify-content:space-between;width:100%">
         <span class="mobile-only-label" style="font-size:13px;color:var(--text-muted)">Item Total:</span>
-        <div class="item-row-total" style="font-size:16px;font-weight:800;color:var(--gold-600)">${H.fmt((qty||1)*(parseFloat(price)||0))}</div>
+        <div class="item-row-total" style="font-size:16px;font-weight:800;color:var(--gold-600)">${H.fmt(parseFloat(price)||0)}</div>
       </div>
       <div class="item-col item-col-remove">
         <button class="remove-item-btn" onclick="this.closest('.item-row').remove();Billing.calcTotals()" title="Remove Item">×</button>
