@@ -1208,7 +1208,7 @@ Views.dashboard = {
           <div class="stat-sub">${bills.length} total bills</div>
           <div class="stat-icon">📈</div>
         </div>
-        <div class="stat-card warning" style="cursor:pointer" onclick="Router.go('bills'); setTimeout(() => Views.bills.filterStatus('partial'), 100)" title="Click to view all unpaid / partial bills">
+        <div class="stat-card warning" style="cursor:pointer" onclick="Router.go('bills'); setTimeout(() => { const sel = document.getElementById('bill-status-filter'); if(sel) sel.value = 'due'; Views.bills.filterStatus('due'); }, 100)" title="Click to view all unpaid / partial bills">
           <div class="stat-label">Pending Collection</div>
           <div class="stat-value">${H.fmt(overallBreakdown.pending)}</div>
           <div class="stat-sub">Click to view unpaid bills</div>
@@ -2127,8 +2127,9 @@ Views['bills'] = {
             <input id="bill-search" placeholder="Search by customer name or bill #..." oninput="Views.bills.search(this.value)">
           </div>
           <div style="display:flex;gap:8px">
-            <select class="form-select" style="width:auto;padding:8px 12px;font-size:13px" onchange="Views.bills.filterStatus(this.value)">
+            <select class="form-select" id="bill-status-filter" style="width:auto;padding:8px 12px;font-size:13px" onchange="Views.bills.filterStatus(this.value)">
               <option value="">All Status</option>
+              <option value="due">⏳ Pending Collection (Due Bills)</option>
               <option value="paid">Paid</option>
               <option value="partial">Partial</option>
               <option value="pending">Pending</option>
@@ -2159,7 +2160,13 @@ Views['bills'] = {
 
   filterStatus: (status) => {
     const bills = Store.getBills();
-    Views.bills._filtered = status ? bills.filter(b => b.payment.status === status) : null;
+    if (!status) {
+      Views.bills._filtered = null;
+    } else if (status === 'due') {
+      Views.bills._filtered = bills.filter(b => (b.payment && b.payment.due > 0) || b.payment?.status === 'partial' || b.payment?.status === 'pending' || b.payment?.mode === 'Pending');
+    } else {
+      Views.bills._filtered = bills.filter(b => b.payment && b.payment.status === status);
+    }
     Views.bills._renderRows(Views.bills._filtered || bills);
   },
 
