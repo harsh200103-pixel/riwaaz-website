@@ -291,6 +291,37 @@ const Store = {
   totalSales: () => Store.data.bills.filter(b => b.status !== 'return').reduce((s, b) => s + (b.total || 0), 0),
   lowStockCount: () => Store.data.products.filter(p => p.stock !== null && p.stock <= CONFIG.lowStockThreshold).length,
 
+  calcPaymentBreakdown: (billsList) => {
+    let cash = 0, upi = 0, card = 0, pending = 0, totalPaid = 0;
+    (billsList || []).forEach(b => {
+      if (b.status === 'return') return;
+      const p = b.payment || {};
+      const paid = parseFloat(p.amountPaid !== undefined && p.amountPaid !== null ? p.amountPaid : (b.total || 0)) || 0;
+      const due = parseFloat(p.due) || 0;
+      const mode = String(p.mode || 'Cash').trim();
+      
+      pending += due;
+      totalPaid += paid;
+      
+      if (mode.includes('Cash') && mode.includes('UPI') && mode.includes('Card')) {
+        cash += paid / 3; upi += paid / 3; card += paid / 3;
+      } else if (mode.includes('Cash') && mode.includes('UPI')) {
+        cash += paid / 2; upi += paid / 2;
+      } else if (mode.includes('Cash') && mode.includes('Card')) {
+        cash += paid / 2; card += paid / 2;
+      } else if (mode.includes('UPI') && mode.includes('Card')) {
+        upi += paid / 2; card += paid / 2;
+      } else if (mode.toLowerCase().includes('upi') || mode.toLowerCase().includes('online')) {
+        upi += paid;
+      } else if (mode.toLowerCase().includes('card')) {
+        card += paid;
+      } else {
+        cash += paid;
+      }
+    });
+    return { cash, upi, card, pending, totalPaid };
+  },
+
   // Cloud Backup & Restore
   cloudBackup: async (token) => {
     const owner = 'harsh200103-pixel';
@@ -1149,6 +1180,9 @@ Views.dashboard = {
         <button class="btn btn-sm btn-outline" style="margin-left:auto" onclick="Router.go('inventory')">View Inventory</button>
       </div>` : '';
 
+    const todayBreakdown = Store.calcPaymentBreakdown(bills.filter(b => b.date === H.today()));
+    const overallBreakdown = Store.calcPaymentBreakdown(bills);
+
     v.innerHTML = `
       <div class="view-header">
         <h1>${H.greet()}, Eshmira! 👋</h1>
@@ -1183,6 +1217,69 @@ Views.dashboard = {
       </div>
 
       ${lowStockAlert}
+
+      <!-- Payment Mode Collections Breakdown -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin: 24px 0;">
+        <!-- Daily Payment Breakdown -->
+        <div class="card" style="padding: 20px; border-left: 4px solid var(--gold-500); background: #FFFDF9;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+            <div>
+              <h3 style="margin:0; font-size: 16px; font-weight: 700; color:#1E293B;">📅 Today's Collections (Daily)</h3>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Amounts received by payment mode today</div>
+            </div>
+            <span class="badge" style="background:#FEF3C7; color:#92400E; font-weight:700;">Today</span>
+          </div>
+          
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="background: #F8FAFC; padding: 14px; border-radius: 10px; border: 1px solid #E2E8F0;">
+              <div style="font-size:11px; color:#64748B; font-weight:700; text-transform:uppercase;">💵 Cash Received</div>
+              <div style="font-size:19px; font-weight:800; color:#1E293B; margin-top:6px;">${H.fmt(todayBreakdown.cash)}</div>
+            </div>
+            <div style="background: #ECFDF5; padding: 14px; border-radius: 10px; border: 1px solid #A7F3D0;">
+              <div style="font-size:11px; color:#065F46; font-weight:700; text-transform:uppercase;">📱 UPI / Online</div>
+              <div style="font-size:19px; font-weight:800; color:#047857; margin-top:6px;">${H.fmt(todayBreakdown.upi)}</div>
+            </div>
+            <div style="background: #EFF6FF; padding: 14px; border-radius: 10px; border: 1px solid #BFDBFE;">
+              <div style="font-size:11px; color:#1E40AF; font-weight:700; text-transform:uppercase;">💳 Card Received</div>
+              <div style="font-size:19px; font-weight:800; color:#2563EB; margin-top:6px;">${H.fmt(todayBreakdown.card)}</div>
+            </div>
+            <div style="background: #FEF2F2; padding: 14px; border-radius: 10px; border: 1px solid #FECACA;">
+              <div style="font-size:11px; color:#991B1B; font-weight:700; text-transform:uppercase;">⏳ Pending / Due</div>
+              <div style="font-size:19px; font-weight:800; color:#DC2626; margin-top:6px;">${H.fmt(todayBreakdown.pending)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Overall Payment Breakdown -->
+        <div class="card" style="padding: 20px; border-left: 4px solid #10B981; background: #FAFEFD;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+            <div>
+              <h3 style="margin:0; font-size: 16px; font-weight: 700; color:#1E293B;">🌍 Overall Collections (All-Time)</h3>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Total received across all bills</div>
+            </div>
+            <span class="badge" style="background:#D1FAE5; color:#065F46; font-weight:700;">Overall</span>
+          </div>
+          
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="background: #F8FAFC; padding: 14px; border-radius: 10px; border: 1px solid #E2E8F0;">
+              <div style="font-size:11px; color:#64748B; font-weight:700; text-transform:uppercase;">💵 Total Cash</div>
+              <div style="font-size:19px; font-weight:800; color:#1E293B; margin-top:6px;">${H.fmt(overallBreakdown.cash)}</div>
+            </div>
+            <div style="background: #ECFDF5; padding: 14px; border-radius: 10px; border: 1px solid #A7F3D0;">
+              <div style="font-size:11px; color:#065F46; font-weight:700; text-transform:uppercase;">📱 Total UPI / Online</div>
+              <div style="font-size:19px; font-weight:800; color:#047857; margin-top:6px;">${H.fmt(overallBreakdown.upi)}</div>
+            </div>
+            <div style="background: #EFF6FF; padding: 14px; border-radius: 10px; border: 1px solid #BFDBFE;">
+              <div style="font-size:11px; color:#1E40AF; font-weight:700; text-transform:uppercase;">💳 Total Card</div>
+              <div style="font-size:19px; font-weight:800; color:#2563EB; margin-top:6px;">${H.fmt(overallBreakdown.card)}</div>
+            </div>
+            <div style="background: #FEF2F2; padding: 14px; border-radius: 10px; border: 1px solid #FECACA;">
+              <div style="font-size:11px; color:#991B1B; font-weight:700; text-transform:uppercase;">⏳ Total Outstanding Due</div>
+              <div style="font-size:19px; font-weight:800; color:#DC2626; margin-top:6px;">${H.fmt(overallBreakdown.pending)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="dashboard-grid">
         <div class="card">
@@ -2994,13 +3091,16 @@ Views['reports'] = {
 
       <div class="report-filter-row">
         <span style="font-size:13px;color:var(--text-muted);font-weight:600">Period:</span>
+        <button class="period-btn" onclick="Views.reports.setPeriod(1,this)">Today (Daily)</button>
         <button class="period-btn" onclick="Views.reports.setPeriod(7,this)">7 Days</button>
         <button class="period-btn active" onclick="Views.reports.setPeriod(30,this)">30 Days</button>
         <button class="period-btn" onclick="Views.reports.setPeriod(90,this)">3 Months</button>
         <button class="period-btn" onclick="Views.reports.setPeriod(365,this)">1 Year</button>
+        <button class="period-btn" onclick="Views.reports.setPeriod(99999,this)">Overall (All Time)</button>
       </div>
 
       <div class="stats-grid" id="report-stats"></div>
+      <div id="report-payment-breakdown"></div>
 
       <div class="reports-grid">
         <div class="card">
@@ -3035,17 +3135,63 @@ Views['reports'] = {
   },
 
   loadData: (days) => {
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
-    const bills = Store.getBills().filter(b => b.status !== 'return' && new Date(b.date) >= cutoff);
+    let bills = Store.getBills().filter(b => b.status !== 'return');
+    const labelText = days === 1 ? 'Today (Daily)' : (days >= 9999 ? 'Overall (All Time)' : `Last ${days} days`);
+    if (days === 1) {
+      const today = H.today();
+      bills = bills.filter(b => b.date === today);
+    } else if (days < 9999) {
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+      bills = bills.filter(b => new Date(b.date) >= cutoff);
+    }
+
     const total = bills.reduce((s,b) => s+b.total, 0);
     const avg   = bills.length ? total / bills.length : 0;
 
     // Stats
     document.getElementById('report-stats').innerHTML = `
-      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">${H.fmt(total)}</div><div class="stat-sub">Last ${days} days</div></div>
-      <div class="stat-card maroon"><div class="stat-label">Total Bills</div><div class="stat-value">${bills.length}</div><div class="stat-sub">Last ${days} days</div></div>
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">${H.fmt(total)}</div><div class="stat-sub">${labelText}</div></div>
+      <div class="stat-card maroon"><div class="stat-label">Total Bills</div><div class="stat-value">${bills.length}</div><div class="stat-sub">${labelText}</div></div>
       <div class="stat-card green"><div class="stat-label">Avg Bill Value</div><div class="stat-value">${H.fmt(Math.round(avg))}</div><div class="stat-sub">Per transaction</div></div>
       <div class="stat-card warning"><div class="stat-label">Total Discount</div><div class="stat-value">${H.fmt(bills.reduce((s,b)=>s+b.discount,0))}</div><div class="stat-sub">Given to customers</div></div>`;
+
+    // Payment Collections Breakdown Panel
+    const bk = Store.calcPaymentBreakdown(bills);
+    const payEl = document.getElementById('report-payment-breakdown');
+    if (payEl) {
+      payEl.innerHTML = `
+        <div class="card" style="padding: 20px; border-left: 4px solid var(--gold-500); background: #FFFDF9; margin-bottom: 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+            <div>
+              <h3 style="margin:0; font-size: 16px; font-weight: 700; color:#1E293B;">💰 Collections by Payment Mode (${labelText})</h3>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Exact amounts received via Cash, UPI, Card & Outstanding Pending</div>
+            </div>
+            <span class="badge" style="background:#FEF3C7; color:#92400E; font-weight:700;">${labelText}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px;">
+            <div style="background: #F8FAFC; padding: 14px; border-radius: 10px; border: 1px solid #E2E8F0;">
+              <div style="font-size:11px; color:#64748B; font-weight:700; text-transform:uppercase;">💵 Cash Received</div>
+              <div style="font-size:20px; font-weight:800; color:#1E293B; margin-top:6px;">${H.fmt(bk.cash)}</div>
+            </div>
+            <div style="background: #ECFDF5; padding: 14px; border-radius: 10px; border: 1px solid #A7F3D0;">
+              <div style="font-size:11px; color:#065F46; font-weight:700; text-transform:uppercase;">📱 UPI / Online</div>
+              <div style="font-size:20px; font-weight:800; color:#047857; margin-top:6px;">${H.fmt(bk.upi)}</div>
+            </div>
+            <div style="background: #EFF6FF; padding: 14px; border-radius: 10px; border: 1px solid #BFDBFE;">
+              <div style="font-size:11px; color:#1E40AF; font-weight:700; text-transform:uppercase;">💳 Card Received</div>
+              <div style="font-size:20px; font-weight:800; color:#2563EB; margin-top:6px;">${H.fmt(bk.card)}</div>
+            </div>
+            <div style="background: #FEF2F2; padding: 14px; border-radius: 10px; border: 1px solid #FECACA;">
+              <div style="font-size:11px; color:#991B1B; font-weight:700; text-transform:uppercase;">⏳ Pending / Due</div>
+              <div style="font-size:20px; font-weight:800; color:#DC2626; margin-top:6px;">${H.fmt(bk.pending)}</div>
+            </div>
+            <div style="background: #FFFBEB; padding: 14px; border-radius: 10px; border: 1px solid #FDE68A;">
+              <div style="font-size:11px; color:#B45309; font-weight:700; text-transform:uppercase;">💎 Total Collected</div>
+              <div style="font-size:20px; font-weight:800; color:#92400E; margin-top:6px;">${H.fmt(bk.totalPaid)}</div>
+            </div>
+          </div>
+        </div>`;
+    }
 
     // Daily sales data (last N days)
     const days_arr = Array.from({length: Math.min(days, 30)}, (_, i) => {
@@ -3060,8 +3206,12 @@ Views['reports'] = {
     bills.forEach(b => b.items.forEach(it => { catData[it.category] = (catData[it.category]||0) + it.total; }));
 
     // Payment mode data
-    const payData = {};
-    bills.forEach(b => { payData[b.payment.mode] = (payData[b.payment.mode]||0) + b.total; });
+    const payData = {
+      'Cash': Math.round(bk.cash),
+      'UPI / Online': Math.round(bk.upi),
+      'Card': Math.round(bk.card),
+      'Pending Due': Math.round(bk.pending)
+    };
 
     // Top customers
     const custMap = {};
