@@ -2021,7 +2021,7 @@ Views['new-bill'] = {
 
     setTimeout(() => {
       try {
-        // Restrict decoding formats to common barcodes and QR Codes to keep it fast
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.CODE_128,
           Html5QrcodeSupportedFormats.CODE_39,
@@ -2032,35 +2032,45 @@ Views['new-bill'] = {
           Html5QrcodeSupportedFormats.QR_CODE
         ];
         
-        // Enable experimental native browser BarcodeDetector which runs hardware-accelerated scanning!
+        // Disable experimental useBarCodeDetectorIfSupported on iOS Safari as it causes WebKit crashes
         const scanner = new Html5Qrcode("camera-scanner-view", { 
           formatsToSupport: formatsToSupport,
+          verbose: false,
           experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
+            useBarCodeDetectorIfSupported: !isIOS
           }
         });
         Views['new-bill'].activeScanner = scanner;
 
+        const scanConfig = {
+          fps: isIOS ? 10 : 15,
+          qrbox: { width: 240, height: 120 }
+        };
+
+        const onScanSuccess = (decodedText) => {
+          Views['new-bill'].stopCameraScanner();
+          Billing.addProductBySku(decodedText);
+        };
+        const onScanError = (err) => {};
+
         scanner.start(
           { facingMode: "environment" },
-          {
-            fps: 24, // Increase scan frame rate
-            qrbox: (width, height) => {
-              // Larger rectangular box optimized for thermal sticker barcodes
-              return { width: Math.min(290, width * 0.95), height: Math.min(130, height * 0.6) };
-            }
-          },
-          (decodedText) => {
-            Views['new-bill'].stopCameraScanner();
-            Billing.addProductBySku(decodedText);
-          },
-          (err) => {
-            // Ignore scan errors
-          }
+          scanConfig,
+          onScanSuccess,
+          onScanError
         ).catch(err => {
-          console.error("Camera scan start error:", err);
-          Toast.show('⚠️ Camera access denied or not available. Please allow camera permissions.', 'error', 4000);
-          Modal.close();
+          console.warn("Back camera environment scan failed, attempting iOS camera fallback...", err);
+          Html5Qrcode.getCameras().then(devices => {
+            if (devices && devices.length) {
+              const camId = devices[devices.length - 1].id;
+              return scanner.start(camId, scanConfig, onScanSuccess, onScanError);
+            }
+            throw err;
+          }).catch(err2 => {
+            console.error("Camera scan start error:", err2);
+            Toast.show('⚠️ iOS Camera access required. Check iPhone Settings > Safari > Camera.', 'error', 4500);
+            Modal.close();
+          });
         });
       } catch(e) {
         console.error("Scanner init error:", e);
