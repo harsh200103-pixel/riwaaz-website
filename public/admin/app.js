@@ -688,7 +688,13 @@ const BluetoothPOS = {
     try {
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2']
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb',
+          'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+          '0000ff00-0000-1000-8000-00805f9b34fb',
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          '0000ae30-0000-1000-8000-00805f9b34fb'
+        ]
       });
       const server = await device.gatt.connect();
       const services = await server.getPrimaryServices();
@@ -2545,7 +2551,8 @@ Views['inventory'] = {
           <h1>Inventory</h1>
           <p>${products.length} product${products.length!==1?'s':''} · ${Store.lowStockCount()} low stock</p>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-sm btn-outline" style="height:32px;padding:0 10px;font-size:12px;display:flex;align-items:center;gap:4px" onclick="BluetoothPOS.connect()" title="Connect Seznik Dev Bluetooth Printer">⚡ Connect Printer</button>
           <select id="printer-type" class="form-select" style="width:auto; padding:4px 24px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" onchange="localStorage.setItem('printerType', this.value)">
             <option value="thermal" ${localStorage.getItem('printerType')==='a4'?'':'selected'}>Thermal Printer</option>
             <option value="a4" ${localStorage.getItem('printerType')==='a4'?'selected':''}>Normal A4 Printer</option>
