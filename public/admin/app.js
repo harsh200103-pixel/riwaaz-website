@@ -773,6 +773,17 @@ const BluetoothPOS = {
     text += "\x1B\x61\x01Thank You! Visit Again\n\n\n\n";
     text += "\x1D\x56\x41\x03"; // GS V cut paper
     await BluetoothPOS.sendBytes(encoder.encode(text));
+  },
+
+  printBarcodeRaw: async (p) => {
+    const encoder = new TextEncoder();
+    let text = "\x1B\x40"; // ESC @ Init
+    text += "\x1B\x61\x01"; // Center align
+    text += "\x1B\x45\x01RIWAAZ\x1B\x45\x00\n";
+    text += `${(p.name || '').slice(0, 24)}\n`;
+    text += `SKU: ${p.sku || p.id}\n`;
+    text += `MRP: INR ${p.price || 0}\n\n\n`;
+    await BluetoothPOS.sendBytes(encoder.encode(text));
   }
 };
 
@@ -2776,8 +2787,14 @@ Views['inventory'] = {
       Modal.close();
       Views.inventory.render();
       if (printAfterSave) {
-        const targetId = editId || finalSku;
-        setTimeout(() => Views.inventory.printBarcode(targetId), 300);
+        const targetId = (editId && editId !== 'null' && editId !== 'undefined') ? editId : finalSku;
+        setTimeout(() => {
+          if (BluetoothPOS.isConnected()) {
+            BluetoothPOS.printBarcodeRaw({ ...p, id: targetId });
+          } else {
+            Views.inventory.printBarcode(targetId);
+          }
+        }, 150);
       }
     } catch (err) {
       console.error("Firestore Save Error:", err);
@@ -2806,10 +2823,14 @@ Views['inventory'] = {
     }
   },
 
-  printBarcode: (id) => {
+  printBarcode: async (id) => {
     const p = Store.getProduct(id);
     if (!p) return;
     const isA4 = localStorage.getItem('printerType') === 'a4';
+    if (!isA4 && BluetoothPOS.isConnected()) {
+      await BluetoothPOS.printBarcodeRaw(p);
+      return;
+    }
     const barcodeVal = p.sku || p.id;
 
     let html = '';
