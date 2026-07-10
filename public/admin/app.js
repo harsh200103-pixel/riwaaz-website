@@ -778,12 +778,13 @@ const BluetoothPOS = {
   printBarcodeRaw: async (p) => {
     const sku = String(p.sku || p.id || '1001').toUpperCase().replace(/[^A-Z0-9]/g, '');
     let cmd = "\x1B\x40"; // ESC @ Init
+    cmd += "\x1B\x33\x12"; // Tight 18-dot line spacing
     cmd += "\x1B\x61\x01"; // Center align
     cmd += "\x1B\x45\x01RIWAAZ\x1B\x45\x00\n"; // Brand Bold
     cmd += `${(p.name || '').slice(0, 22)}\n`;
-    cmd += "\x1D\x68\x32\x1D\x77\x02\x1D\x48\x02"; // Barcode height 50, width 2, text below
+    cmd += "\x1D\x68\x20\x1D\x77\x02\x1D\x48\x02"; // Barcode height 32 dots (~4mm), width 2, HRI text below
     cmd += "\x1D\x6B\x04" + sku + "\x00\n"; // ESC/POS CODE39 Barcode command
-    cmd += `MRP: INR ${p.price || 0}\n\n\n`;
+    cmd += `MRP: INR ${p.price || 0}\n`; // Single newline so it fits centered in 25mm label
     const encoder = new TextEncoder();
     await BluetoothPOS.sendBytes(encoder.encode(cmd));
   }
