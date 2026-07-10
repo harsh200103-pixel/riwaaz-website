@@ -1,0 +1,14 @@
+{
+  "appId": "com.eshmira.riwaaz.pos",
+  "appName": "Riwaaz POS",
+  "webDir": "../public",
+  "server": {
+    "url": "https://riwaaz-website.vercel.app/admin",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}

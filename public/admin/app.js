@@ -666,6 +666,107 @@ _For queries: ${CONFIG.phone1}_`;
   }
 };
 
+// ══════════════════════════════════════ BLUETOOTH POS (SEZNIK DEV PRINTER) ══════
+const BluetoothPOS = {
+  device: null,
+  characteristic: null,
+  
+  isConnected: () => Boolean(BluetoothPOS.characteristic || window.AndroidPOS),
+  
+  connect: async () => {
+    // 1. Check if running inside native Android wrapper
+    if (window.AndroidPOS && window.AndroidPOS.connect) {
+      window.AndroidPOS.connect();
+      Toast.show('⚡ Connected to Seznik Dev Printer via Android Bridge!', 'success');
+      return true;
+    }
+    // 2. Web Bluetooth API fallback
+    if (!navigator.bluetooth) {
+      Toast.show('⚠️ Bluetooth printing requires Android Chrome or Riwaaz POS App.', 'error', 4500);
+      return false;
+    }
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2']
+      });
+      const server = await device.gatt.connect();
+      const services = await server.getPrimaryServices();
+      for (const service of services) {
+        const characteristics = await service.getCharacteristics();
+        for (const char of characteristics) {
+          if (char.properties.write || char.properties.writeWithoutResponse) {
+            BluetoothPOS.device = device;
+            BluetoothPOS.characteristic = char;
+            Toast.show(`✓ Connected to ${device.name || 'Seznik Dev Printer'}`, 'success');
+            return true;
+          }
+        }
+      }
+      Toast.show('⚠️ Could not find writable ESC/POS channel on printer.', 'error');
+    } catch (e) {
+      console.warn("Bluetooth connect error:", e);
+      if (e.name !== 'NotFoundError') {
+        Toast.show('⚠️ Bluetooth connection failed: ' + (e.message || 'Error'), 'error');
+      }
+    }
+    return false;
+  },
+
+  sendBytes: async (uint8array) => {
+    if (window.AndroidPOS && window.AndroidPOS.sendBytes) {
+      window.AndroidPOS.sendBytes(Array.from(uint8array));
+      return true;
+    }
+    if (!BluetoothPOS.characteristic) {
+      const connected = await BluetoothPOS.connect();
+      if (!connected) return false;
+    }
+    try {
+      // Chunked write for BLE MTU limits (512 bytes per chunk)
+      const chunkSize = 180;
+      for (let i = 0; i < uint8array.length; i += chunkSize) {
+        const chunk = uint8array.slice(i, i + chunkSize);
+        await BluetoothPOS.characteristic.writeValueWithoutResponse(chunk);
+      }
+      return true;
+    } catch (e) {
+      console.error("Bluetooth write error:", e);
+      Toast.show('⚠️ Printer communication error. Please reconnect.', 'error');
+      BluetoothPOS.characteristic = null;
+      return false;
+    }
+  },
+
+  printBillRaw: async (bill) => {
+    const encoder = new TextEncoder();
+    let text = "\x1B\x40"; // ESC @ Init
+    text += "\x1B\x61\x01"; // ESC a 1 Center
+    text += "================================\n";
+    text += "\x1B\x45\x01RIWAAZ BY ESHMIRA\x1B\x45\x00\n";
+    text += "Premium Ethnic Boutique\n";
+    text += "Indore | Ph: 9827788773\n";
+    text += "================================\n";
+    text += "\x1B\x61\x00"; // ESC a 0 Left align
+    text += `Bill #: ${bill.billNumber}\n`;
+    text += `Date  : ${H.formatDate(bill.date)}\n`;
+    text += `Cust  : ${bill.customer?.name || 'Walk-in'}\n`;
+    if (bill.customer?.phone) text += `Phone : ${bill.customer.phone}\n`;
+    text += "--------------------------------\n";
+    (bill.items || []).forEach(it => {
+      text += `${it.category} (${it.qty}x)\n`;
+      text += `  @ INR ${it.price} -> INR ${it.total}\n`;
+    });
+    text += "--------------------------------\n";
+    text += `TOTAL : INR ${bill.total}\n`;
+    text += `MODE  : ${bill.payment?.mode || 'Cash'}\n`;
+    text += "--------------------------------\n";
+    text += "\x1B\x61\x01Thank You! Visit Again\n\n\n\n";
+    text += "\x1D\x56\x41\x03"; // GS V cut paper
+    await BluetoothPOS.sendBytes(encoder.encode(text));
+  }
+};
+
 // ══════════════════════════════════════ PRINT ══════
 const Print = {
   buildHtml: (bill) => {
@@ -1659,6 +1760,7 @@ Views['new-bill'] = {
           <p>Create a digital bill and share instantly on WhatsApp</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm btn-outline" style="height:32px;padding:0 10px;font-size:12px;display:flex;align-items:center;gap:4px" onclick="BluetoothPOS.connect()" title="Connect Seznik Dev Bluetooth Printer">⚡ Connect Printer</button>
           <select id="bill-printer-type" class="form-select" style="width:auto; padding:4px 24px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" onchange="localStorage.setItem('printerType', this.value)">
             <option value="thermal" ${localStorage.getItem('printerType')==='a4'?'':'selected'}>Thermal Printer</option>
             <option value="a4" ${localStorage.getItem('printerType')==='a4'?'selected':''}>Normal A4 Printer</option>
