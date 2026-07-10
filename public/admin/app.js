@@ -777,16 +777,21 @@ const BluetoothPOS = {
 
   printBarcodeRaw: async (p) => {
     const sku = String(p.sku || p.id || '1001').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    let cmd = "\x1B\x40"; // ESC @ Init
-    cmd += "\x1B\x33\x12"; // Tight 18-dot line spacing
-    cmd += "\x1B\x61\x01"; // Center align
-    cmd += "\x1B\x45\x01RIWAAZ\x1B\x45\x00\n"; // Brand Bold
-    cmd += `${(p.name || '').slice(0, 22)}\n`;
-    cmd += "\x1D\x68\x20\x1D\x77\x02\x1D\x48\x02"; // Barcode height 32 dots (~4mm), width 2, HRI text below
-    cmd += "\x1D\x6B\x04" + sku + "\x00\n"; // ESC/POS CODE39 Barcode command
-    cmd += `MRP: INR ${p.price || 0}\n`; // Single newline so it fits centered in 25mm label
+    const name = (p.name || '').slice(0, 22);
+    const price = p.price || 0;
+    
+    let tspl = "SIZE 50 mm, 25 mm\r\n";
+    tspl += "GAP 2 mm, 0 mm\r\n";
+    tspl += "DIRECTION 1\r\n";
+    tspl += "CLS\r\n";
+    tspl += `TEXT 140, 12, "TSS24.BF2", 0, 1, 1, "RIWAAZ"\r\n`;
+    tspl += `TEXT 40, 42, "TSS24.BF2", 0, 1, 1, "${name}"\r\n`;
+    tspl += `BARCODE 60, 72, "128", 48, 1, 0, 2, 2, "${sku}"\r\n`;
+    tspl += `TEXT 115, 160, "TSS24.BF2", 0, 1, 1, "MRP: INR ${price}"\r\n`;
+    tspl += "PRINT 1,1\r\n";
+    
     const encoder = new TextEncoder();
-    await BluetoothPOS.sendBytes(encoder.encode(cmd));
+    await BluetoothPOS.sendBytes(encoder.encode(tspl));
   }
 };
 
