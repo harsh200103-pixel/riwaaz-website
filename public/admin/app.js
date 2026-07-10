@@ -266,8 +266,17 @@ const Store = {
   },
 
   // Products
-  getProducts: () => Store.data.products,
-  addProduct: (p) => db.collection('products').doc(p.id).set(p),
+  getProducts: () => {
+    return [...(Store.data.products || [])].sort((a, b) => {
+      const aTime = a.createdAt || 0;
+      const bTime = b.createdAt || 0;
+      return bTime - aTime;
+    });
+  },
+  addProduct: (p) => {
+    const prod = { createdAt: Date.now(), ...p };
+    return db.collection('products').doc(p.id).set(prod);
+  },
   updateProduct: (id, changes) => db.collection('products').doc(id).update(changes),
   deleteProduct: (id) => db.collection('products').doc(id).delete(),
   getProduct: (id) => Store.data.products.find(p => p.id === id) || null,
@@ -2642,7 +2651,7 @@ Views['inventory'] = {
         await Store.updateProduct(editId, p);
         Toast.show('✓ Product updated!', 'success');
       } else {
-        await Store.addProduct({ ...p, id: finalSku, soldOut });
+        await Store.addProduct({ ...p, createdAt: Date.now(), id: finalSku, soldOut });
         Toast.show('✓ Product added!', 'success');
       }
       Modal.close();
@@ -2713,28 +2722,29 @@ Views['inventory'] = {
           <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
           <style>
             @page {
-              size: 50mm 30mm;
+              size: 50mm 25mm;
               margin: 0;
             }
             body, html { 
               margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; 
-              width: 50mm; height: 30mm; overflow: hidden;
+              width: 50mm; height: 25mm; max-height: 25mm; overflow: hidden;
             }
             .label-container {
               display: flex; flex-direction: column; align-items: center; justify-content: center;
-              width: 50mm; height: 30mm; padding: 0.5mm 2mm; box-sizing: border-box;
+              width: 50mm; height: 25mm; max-height: 25mm; padding: 0.5mm 1.5mm; box-sizing: border-box;
               position: relative; overflow: hidden; background: white;
+              page-break-after: avoid; page-break-inside: avoid;
             }
             .label-brand {
-              font-family: 'Cormorant Garamond', serif; font-size: 10px; font-weight: 700; 
-              text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1px;
-              border-bottom: 1px dotted #000; width: 100%; text-align: center; padding-bottom: 1px;
+              font-family: 'Cormorant Garamond', serif; font-size: 9px; font-weight: 700; 
+              text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0px;
+              border-bottom: 1px dotted #000; width: 100%; text-align: center; padding-bottom: 0px;
             }
             .label-title { 
-              font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+              font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; margin-top: 1px;
             }
-            .label-price { font-size: 8px; font-weight: 700; margin-top: 0px; letter-spacing: 0.5px; }
+            .label-price { font-size: 8px; font-weight: 700; margin-top: 0px; letter-spacing: 0.3px; }
           </style>
         </head>
         <body>
@@ -2758,8 +2768,6 @@ Views['inventory'] = {
     iframe.style.width = '0px';
     iframe.style.height = '0px';
     iframe.style.border = 'none';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '-9999px';
     document.body.appendChild(iframe);
 
     // 2. Write HTML content
@@ -2788,7 +2796,7 @@ Views['inventory'] = {
       const el = iframeDoc.getElementById('barcode-single');
       if (el) {
         try { 
-          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.5, height: 25, displayValue: true, fontSize: 8, margin: 10 }); 
+          JsBarcode(el, barcodeVal, { format: "CODE128", width: 1.3, height: 18, displayValue: true, fontSize: 8, margin: 1 }); 
         } catch(e) { console.error("Error drawing barcode:", e); }
       }
     }
