@@ -2644,7 +2644,8 @@ Views['inventory'] = {
     setTimeout(() => {
       Modal.open('Add New Product', Views.inventory.formHtml(null),
         `<button class="btn btn-ghost" onclick="Modal.close()">Cancel</button>
-         <button class="btn btn-gold" id="btn-save-product" data-action="add" onclick="Views.inventory.saveProduct(null)">Save Product</button>`);
+         <button class="btn btn-outline" style="border-color:var(--gold-600);color:var(--gold-600)" onclick="Views.inventory.saveProduct(null, true)">🏷️ Save & Print Barcode</button>
+         <button class="btn btn-gold" id="btn-save-product" data-action="add" onclick="Views.inventory.saveProduct(null, false)">Save Product</button>`);
     }, 100);
   },
 
@@ -2654,7 +2655,8 @@ Views['inventory'] = {
     Views.inventory.currentImages = p.images ? [...p.images] : [];
     Modal.open('Edit Product', Views.inventory.formHtml(p),
       `<button class="btn btn-ghost" onclick="Modal.close()">Cancel</button>
-       <button class="btn btn-gold" id="btn-save-product" data-action="edit" onclick="Views.inventory.saveProduct('${id}')">Save Changes</button>`);
+       <button class="btn btn-outline" style="border-color:var(--gold-600);color:var(--gold-600)" onclick="Views.inventory.saveProduct('${id}', true)">🏷️ Save & Print Barcode</button>
+       <button class="btn btn-gold" id="btn-save-product" data-action="edit" onclick="Views.inventory.saveProduct('${id}', false)">Save Changes</button>`);
   },
 
   formHtml: (p) => `
@@ -2719,7 +2721,7 @@ Views['inventory'] = {
       </div>
     </div>`,
 
-  saveProduct: async (editId) => {
+  saveProduct: async (editId, printAfterSave = false) => {
     const name  = document.getElementById('prod-name')?.value.trim();
     const cat   = document.getElementById('prod-cat')?.value;
     const fabric= document.getElementById('prod-fabric')?.value || null;
@@ -2765,6 +2767,10 @@ Views['inventory'] = {
       }
       Modal.close();
       Views.inventory.render();
+      if (printAfterSave) {
+        const targetId = editId || finalSku;
+        setTimeout(() => Views.inventory.printBarcode(targetId), 300);
+      }
     } catch (err) {
       console.error("Firestore Save Error:", err);
       if (err.message && err.message.includes('exceeds maximum size')) {
