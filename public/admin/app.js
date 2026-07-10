@@ -613,6 +613,9 @@ _For queries: ${CONFIG.phone1}_`;
 
   printAndShare: async (bill, type) => {
     localStorage.setItem('printerType', type);
+    if (type === 'thermal' && BluetoothPOS.isConnected()) {
+      await BluetoothPOS.printBillRaw(bill);
+    }
     Print.bill(bill);
   },
 
@@ -856,11 +859,16 @@ const Print = {
         <head>
           <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
           <style>
-            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; color: #000; }
-            .print-receipt-container { width: 100% !important; padding: 0 !important; box-sizing: border-box; }
+            @page {
+              size: 72mm auto;
+              margin: 0mm;
+            }
+            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; color: #000; width: 72mm; }
+            .print-receipt-container { width: 72mm !important; padding: 0 !important; box-sizing: border-box; }
             @media print {
-              body, html { width: 100%; margin: 0; padding: 0; }
-              .print-receipt-container { width: 100% !important; padding: 0 !important; }
+              @page { size: 72mm auto; margin: 0mm; }
+              body, html { width: 72mm; margin: 0; padding: 0; }
+              .print-receipt-container { width: 72mm !important; padding: 0 !important; }
             }
           </style>
         </head>
