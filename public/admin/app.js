@@ -915,6 +915,7 @@ const BluetoothPOS = {
     tspl += "GAP 2 mm, 0 mm\r\n";
     tspl += "DIRECTION 1\r\n";
     tspl += "CLS\r\n";
+    tspl += "HOME\r\n";
     tspl += `TEXT 140, 12, "TSS24.BF2", 0, 1, 1, "RIWAAZ"\r\n`;
     tspl += `TEXT 40, 42, "TSS24.BF2", 0, 1, 1, "${name}"\r\n`;
     tspl += `BARCODE 60, 72, "128", 48, 1, 0, 2, 2, "${sku}"\r\n`;
