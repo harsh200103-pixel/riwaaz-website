@@ -996,6 +996,61 @@ const BluetoothPOS = {
     
     const encoder = new TextEncoder();
     await BluetoothPOS.sendBytes(encoder.encode(tspl));
+  },
+
+  printImageRaw: async (dataUrl, maxWidth = 384) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        let width = Math.min(img.width, maxWidth);
+        width = Math.floor(width / 8) * 8;
+        if (width <= 0) width = 8;
+        const height = Math.floor((img.height * width) / img.width);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+
+        const bytesPerLine = width / 8;
+        const rasterBytes = new Uint8Array(bytesPerLine * height);
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+            const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+            if (lum < 160) {
+              const byteIdx = y * bytesPerLine + Math.floor(x / 8);
+              const bit = 7 - (x % 8);
+              rasterBytes[byteIdx] |= (1 << bit);
+            }
+          }
+        }
+
+        const header = new Uint8Array([
+          0x1B, 0x40,
+          0x1B, 0x61, 0x01,
+          0x1D, 0x76, 0x30, 0x00,
+          bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
+          height & 0xFF, (height >> 8) & 0xFF
+        ]);
+
+        const fullPacket = new Uint8Array(header.length + rasterBytes.length);
+        fullPacket.set(header, 0);
+        fullPacket.set(rasterBytes, header.length);
+
+        await BluetoothPOS.sendBytes(fullPacket);
+        resolve(true);
+      };
+      img.onerror = () => resolve(false);
+      img.src = dataUrl;
+    });
   }
 };
 
@@ -4049,11 +4104,16 @@ Views['custom-print'] = {
 
     if (useBluetooth && BluetoothPOS.isConnected()) {
       for (let i = 0; i < copies; i++) {
-        let cmd = "\x1B\x40\x1B\x61\x01================================\n\x1B\x21\x08RIWAAZ CUSTOM PRINT\x1B\x21\x00\n================================\n\x1B\x61\x00";
-        if (text) cmd += `${text}\n`;
-        cmd += "================================\n\n\x1D\x56\x41\x03";
-        const encoder = new TextEncoder();
-        await BluetoothPOS.sendBytes(encoder.encode(cmd));
+        if (Views['custom-print'].customImage) {
+          await BluetoothPOS.printImageRaw(Views['custom-print'].customImage);
+          await new Promise(r => setTimeout(r, 600));
+        }
+        if (text) {
+          let cmd = "\x1B\x40\x1B\x61\x01================================\n\x1B\x21\x08RIWAAZ CUSTOM PRINT\x1B\x21\x00\n================================\n\x1B\x61\x00";
+          cmd += `${text}\n================================\n\n\x1D\x56\x41\x03`;
+          const encoder = new TextEncoder();
+          await BluetoothPOS.sendBytes(encoder.encode(cmd));
+        }
         if (i < copies - 1) await new Promise(r => setTimeout(r, 800));
       }
       Toast.show(`✓ Sent ${copies} copy/copies to Seznik Bluetooth Printer!`, 'success');
