@@ -907,12 +907,12 @@ const BluetoothPOS = {
       if (!connected) connected = await BluetoothPOS.connect();
       if (!connected) return false;
     }
-    try {
-      // Chunked write for BLE MTU limits (180 bytes per chunk)
-      const chunkSize = 180;
+      // Chunked write with 15ms throttle for BLE & thermal printer hardware buffer limits
+      const chunkSize = 100;
       for (let i = 0; i < uint8array.length; i += chunkSize) {
         const chunk = uint8array.slice(i, i + chunkSize);
         await BluetoothPOS.characteristic.writeValueWithoutResponse(chunk);
+        await new Promise(r => setTimeout(r, 15));
       }
       return true;
     } catch (e) {
@@ -1017,35 +1017,44 @@ const BluetoothPOS = {
 
         const imgData = ctx.getImageData(0, 0, width, height);
         const data = imgData.data;
-
         const bytesPerLine = width / 8;
-        const rasterBytes = new Uint8Array(bytesPerLine * height);
 
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-            if (lum < 160) {
-              const byteIdx = y * bytesPerLine + Math.floor(x / 8);
-              const bit = 7 - (x % 8);
-              rasterBytes[byteIdx] |= (1 << bit);
+        // Init printer & center align
+        await BluetoothPOS.sendBytes(new Uint8Array([0x1B, 0x40, 0x1B, 0x61, 0x01]));
+
+        // Slice tall images into 120-line blocks to prevent hardware buffer overflow
+        const sliceLines = 120;
+        for (let startY = 0; startY < height; startY += sliceLines) {
+          const sliceH = Math.min(sliceLines, height - startY);
+          const rasterBytes = new Uint8Array(bytesPerLine * sliceH);
+
+          for (let y = 0; y < sliceH; y++) {
+            const actualY = startY + y;
+            for (let x = 0; x < width; x++) {
+              const idx = (actualY * width + x) * 4;
+              const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+              if (lum < 160) {
+                const byteIdx = y * bytesPerLine + Math.floor(x / 8);
+                const bit = 7 - (x % 8);
+                rasterBytes[byteIdx] |= (1 << bit);
+              }
             }
           }
+
+          const header = new Uint8Array([
+            0x1D, 0x76, 0x30, 0x00,
+            bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
+            sliceH & 0xFF, (sliceH >> 8) & 0xFF
+          ]);
+
+          const packet = new Uint8Array(header.length + rasterBytes.length);
+          packet.set(header, 0);
+          packet.set(rasterBytes, header.length);
+
+          await BluetoothPOS.sendBytes(packet);
+          await new Promise(r => setTimeout(r, 60));
         }
 
-        const header = new Uint8Array([
-          0x1B, 0x40,
-          0x1B, 0x61, 0x01,
-          0x1D, 0x76, 0x30, 0x00,
-          bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
-          height & 0xFF, (height >> 8) & 0xFF
-        ]);
-
-        const fullPacket = new Uint8Array(header.length + rasterBytes.length);
-        fullPacket.set(header, 0);
-        fullPacket.set(rasterBytes, header.length);
-
-        await BluetoothPOS.sendBytes(fullPacket);
         resolve(true);
       };
       img.onerror = () => resolve(false);
@@ -3057,7 +3066,7 @@ Views['inventory'] = {
   formHtml: (p) => `
     <div class="form-group">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <label class="form-label" style="margin:0;">Product Name <span style="font-weight:400;color:var(--text-muted)">(Optional for Shop Exclusive items)</span></label>
+        <label class="form-label" style="margin:0;">Product Name *</label>
         <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px;height:24px;font-size:11px;display:flex;align-items:center;gap:4px;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('prod-name')">
           🎙️ Speak Name
         </button>
@@ -3137,7 +3146,7 @@ Views['inventory'] = {
     </div>`,
 
   saveProduct: async (editId, printAfterSave = false) => {
-    let name    = document.getElementById('prod-name')?.value.trim();
+    const name  = document.getElementById('prod-name')?.value.trim();
     const cat   = document.getElementById('prod-cat')?.value;
     const fabric= document.getElementById('prod-fabric')?.value || null;
     const desc  = document.getElementById('prod-desc')?.value.trim();
@@ -3147,18 +3156,12 @@ Views['inventory'] = {
     const inputSku = document.getElementById('prod-sku')?.value.trim();
     const finalSku = inputSku || Views.inventory.generateNextSku();
     
-    let isShopOnly = document.getElementById('prod-shoponly')?.checked;
+    const isShopOnly = document.getElementById('prod-shoponly')?.checked;
     const soldOut = document.getElementById('prod-soldout')?.checked || false;
     const colorsInput = document.getElementById('prod-colors')?.value.trim();
     const colors = colorsInput ? colorsInput.split(',').map(c => c.trim()).filter(Boolean) : [];
     
-    // Allow Shop Exclusive item with just SKU & Price
-    if (!name && (isShopOnly || inputSku || price > 0)) {
-      name = `${cat || 'Shop Exclusive'} #${finalSku}`;
-      isShopOnly = true;
-    }
-
-    if (!name) { Toast.show('⚠️ Product name or SKU code is required', 'error'); return; }
+    if (!name) { Toast.show('⚠️ Product name is required', 'error'); return; }
     
     const images = Views.inventory.currentImages || [];
     if (!isShopOnly && images.length === 0) {
