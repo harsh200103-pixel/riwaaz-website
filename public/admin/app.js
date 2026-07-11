@@ -606,7 +606,6 @@ _For queries: ${CONFIG.phone1}_`;
       let text = `✨ *RIWAAZ BY ESHMIRA*\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━\n`;
       text += `Dear *${custName}*,\n\n`;
-      text += `Thank you for shopping with us! Here are your official invoice details:\n\n`;
       text += `📄 *Invoice No:* #${bill.id}\n`;
       text += `📅 *Date:* ${dateStr}\n`;
       text += `💰 *Total Amount:* ₹${total.toLocaleString('en-IN')}\n`;
@@ -925,172 +924,214 @@ const BluetoothPOS = {
 const Print = {
   buildHtml: (bill) => {
     const isA4 = localStorage.getItem('printerType') === 'a4';
+    const total = bill.total || 0;
+    const paid = bill.paidAmount !== undefined ? bill.paidAmount : total;
+    const due = Math.max(0, total - paid);
+
     if (isA4) {
-      const items = bill.items.map((it, i) => `
-        <tr>
-          <td>${i+1}</td>
-          <td>${H.escHtml(it.category)}</td>
-          <td>${H.escHtml(it.description || '—')}</td>
-          <td style="text-align:center">${it.qty}</td>
-          <td style="text-align:right">${H.fmt(it.price)}</td>
-          <td style="text-align:right;font-weight:600">${H.fmt(it.total)}</td>
-        </tr>`).join('');
-
-      const payLine = bill.payment.status === 'paid'
-        ? `<span style="color:#27AE60;font-weight:700">✓ PAID</span>`
-        : `<span style="color:#E67E22">⏳ Due: ${H.fmt(bill.payment.due)}</span>`;
-
-      return `
-        <div class="print-invoice">
-          <div class="pi-header">
-            <div>
-              <div class="pi-shop-name">Riwaaz</div>
-              <div class="pi-tagline">by Eshmira</div>
-            </div>
-            <div class="pi-address">
-              ${CONFIG.address}<br/>
-              Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
-            </div>
-          </div>
-          <div class="pi-meta">
-            <div>
-              <div class="pi-bill-no">Bill #: ${bill.billNumber}</div>
-              <div style="font-size:13px;color:#666;margin-top:4px">Date: ${H.formatDate(bill.date)} ${bill.time ? ' | Time: ' + bill.time : ''}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:14px;font-weight:600">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</div>
-              ${bill.customer.phone ? `<div style="font-size:12px;color:#666">${bill.customer.phone}</div>` : ''}
-            </div>
-          </div>
-          ${bill.isOnline ? `
-          <div style="margin-bottom:20px;padding:12px;background:#f9f9f9;border:1px solid #eee;border-radius:6px;font-size:13px;line-height:1.5">
-            <div style="font-weight:700;margin-bottom:4px;color:#333;text-transform:uppercase;font-size:11px;letter-spacing:0.05em">📦 Shipping Details</div>
-            <div><strong>Address:</strong> ${H.escHtml(bill.customer.address)}</div>
-            <div><strong>Pincode:</strong> ${H.escHtml(bill.customer.pincode)}</div>
-            <div><strong>Alt Phone:</strong> ${H.escHtml(bill.customer.altPhone || '—')}</div>
-          </div>
-          ` : ''}
-          <table>
-            <thead>
-              <tr>
-                <th>#</th><th>Category</th><th>Description</th>
-                <th style="text-align:center">Qty</th>
-                <th style="text-align:right">Price</th>
-                <th style="text-align:right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>${items}</tbody>
-          </table>
-          <div class="pi-totals">
-            <div class="pi-total-row"><span>Subtotal</span><span>${H.fmt(bill.subtotal)}</span></div>
-            ${bill.discount > 0 ? `<div class="pi-total-row"><span>Discount</span><span>- ${H.fmt(bill.discount)}</span></div>` : ''}
-            <div class="pi-total-row pi-grand"><span>TOTAL</span><span>${H.fmt(bill.total)}</span></div>
-            <div style="font-size:12px;color:#888;margin-top:8px">Payment: ${bill.payment.mode} | ${payLine}</div>
-          </div>
-          <div class="pi-footer">
-            <div class="thanks">Thank you for shopping with us!</div>
-            <div style="margin-top:4px">Riwaaz by Eshmira | ${CONFIG.address}</div>
-            <div>Tel: ${CONFIG.phone1} | ${CONFIG.phone2}</div>
-          </div>
-        </div>`;
-    } else {
-      // Thermal printer layout (72mm/80mm receipt style) - signature layout matching brand design
-      const payLine = bill.payment.status === 'paid'
-        ? `PAID`
-        : `Due: ₹${bill.payment.due.toLocaleString('en-IN')}`;
+      const itemsHtml = bill.items.map((it, i) => `
+        <tr style="border-bottom: 1px solid #EAE0D0; background: ${i % 2 === 0 ? '#FFFFFF' : '#FDFBF7'};">
+          <td style="padding: 12px 10px; text-align: center; color: #7A6850; font-weight: 600;">${i+1}</td>
+          <td style="padding: 12px 10px;">
+            <div style="font-weight: 700; color: #3E2B1D; font-size: 14px;">${H.escHtml(it.description || 'Exclusive Ensemble')}</div>
+            <div style="font-size: 11px; color: #8C7A6B; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">${H.escHtml(it.category || 'Suit')} ${it.details ? '· ' + H.escHtml(it.details) : ''}</div>
+          </td>
+          <td style="padding: 12px 10px; text-align: center; font-weight: 700; color: #3E2B1D;">${it.qty}</td>
+          <td style="padding: 12px 10px; text-align: right; color: #5A4A3C;">₹${(it.price||0).toLocaleString('en-IN')}</td>
+          <td style="padding: 12px 14px; text-align: right; font-weight: 800; color: #3E2B1D;">₹${(it.total||0).toLocaleString('en-IN')}</td>
+        </tr>
+      `).join('');
 
       return `
         <html>
         <head>
-          <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
           <style>
-            @page {
-              size: 72mm auto;
-              margin: 0mm;
+            @page { size: A4; margin: 12mm; }
+            body { font-family: 'Outfit', sans-serif; margin: 0; padding: 0; color: #2C221E; background: #FFF; }
+            .luxury-frame {
+              border: 2px solid #C5A059;
+              padding: 6px;
+              margin: 0 auto;
+              max-width: 780px;
             }
-            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; color: #000; width: 72mm; }
-            .print-receipt-container { width: 72mm !important; padding: 0 !important; box-sizing: border-box; }
-            @media print {
-              @page { size: 72mm auto; margin: 0mm; }
-              body, html { width: 72mm; margin: 0; padding: 0; }
-              .print-receipt-container { width: 72mm !important; padding: 0 !important; }
+            .luxury-inner {
+              border: 1px solid #D8C397;
+              padding: 32px 36px;
+              position: relative;
+              background: #FFFDFC;
             }
           </style>
         </head>
         <body>
-          <div class="print-receipt-container" style="width: 100%; max-width: 72mm; margin: 0 auto; padding: 10px 5px; box-sizing: border-box; background: #fff;">
-            <!-- Brand Logo Header -->
-            <div style="text-align:center; margin-bottom:12px;">
-              <div style="font-size:11px; letter-spacing:5px; color:#000; margin-bottom:4px; font-weight:300;">✧ ✦ ✧</div>
-              <div style="font-size:28px; font-weight:700; font-family:'Cormorant Garamond', serif; text-transform:uppercase; letter-spacing:2px; line-height:1.0; color:#000;">Riwaaz</div>
-              <div style="font-size:9px; text-transform:uppercase; letter-spacing:4px; color:#555; margin-top:3px; font-weight:400; font-family:'Cormorant Garamond', serif; font-style:italic;">by Eshmira</div>
-              <div style="border-top: 1px dotted #000; width: 40px; margin: 8px auto;"></div>
-              <div style="font-size:8px; color:#333; margin-top:4px; line-height:1.4; text-transform:uppercase; letter-spacing:0.5px;">
-                ${CONFIG.address}<br/>
-                Tel: ${CONFIG.phone1} | ${CONFIG.phone2}
+          <div class="luxury-frame">
+            <div class="luxury-inner">
+              <!-- Header -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #C5A059; padding-bottom: 24px; margin-bottom: 24px;">
+                <div>
+                  <div style="font-size: 11px; letter-spacing: 4px; color: #A48644; font-weight: 700; text-transform: uppercase;">Haute Couture & Luxury Ethnic Studio</div>
+                  <div style="font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 700; color: #4A1E27; letter-spacing: 3px; line-height: 1;">RIWAAZ</div>
+                  <div style="font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: #8A6D3B; letter-spacing: 2px; margin-top: 4px;">by Eshmira</div>
+                  <div style="font-size: 12px; color: #665548; margin-top: 10px; line-height: 1.5;">
+                    📍 Bholaram Ustad Marg, Indore, Madhya Pradesh<br/>
+                    📞 Contact: +91 9827788773
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="display: inline-block; background: #FAF5EA; border: 1.5px solid #C5A059; padding: 12px 20px; border-radius: 4px;">
+                    <div style="font-size: 10px; letter-spacing: 2px; color: #8A6D3B; font-weight: 700; text-transform: uppercase;">TAX INVOICE</div>
+                    <div style="font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 700; color: #4A1E27; margin-top: 2px;">#${bill.id || bill.billNumber}</div>
+                    <div style="font-size: 12px; color: #5B4D43; margin-top: 4px; font-weight: 600;">Date: ${H.formatDate(bill.date || H.today())}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Customer Details Section -->
+              <div style="display: flex; justify-content: space-between; background: #FDFBF7; border-left: 4px solid #C5A059; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 6px 6px 0;">
+                <div>
+                  <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #8A6D3B;">BILLED TO CUSTOMER</div>
+                  <div style="font-size: 18px; font-weight: 700; color: #2C221E; margin-top: 4px;">${H.escHtml(bill.customer?.name || 'Valued Customer')}</div>
+                  ${bill.customer?.phone ? `<div style="font-size: 13px; color: #665548; margin-top: 2px;">📱 +91 ${bill.customer.phone}</div>` : ''}
+                  ${bill.customer?.address ? `<div style="font-size: 13px; color: #665548; margin-top: 2px;">📍 ${H.escHtml(bill.customer.address)}</div>` : ''}
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #8A6D3B;">PAYMENT MODE</div>
+                  <div style="font-size: 16px; font-weight: 700; color: #4A1E27; margin-top: 4px;">${bill.payment?.mode || 'Cash/Online'}</div>
+                  <div style="font-size: 12px; font-weight: 700; margin-top: 4px; color: ${due > 0 ? '#C0392B' : '#27AE60'};">${due > 0 ? '⚠️ BALANCE PENDING' : '✅ FULLY PAID'}</div>
+                </div>
+              </div>
+
+              <!-- Items Table -->
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <thead>
+                  <tr style="background: #4A1E27; color: #F8EEDB;">
+                    <th style="padding: 12px 10px; text-align: center; width: 40px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">#</th>
+                    <th style="padding: 12px 10px; text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">Ensemble / Item Description</th>
+                    <th style="padding: 12px 10px; text-align: center; width: 60px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">Qty</th>
+                    <th style="padding: 12px 10px; text-align: right; width: 110px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">Price</th>
+                    <th style="padding: 12px 14px; text-align: right; width: 120px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                </tbody>
+              </table>
+
+              <!-- Totals Box -->
+              <div style="display: flex; justify-content: flex-end; margin-bottom: 32px;">
+                <div style="width: 300px; background: #FAF5EA; border: 1.5px solid #C5A059; border-radius: 6px; padding: 18px 22px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 14px; color: #5B4D43; margin-bottom: 8px;">
+                    <span>Subtotal</span>
+                    <span style="font-weight: 600;">₹${(bill.subtotal||total).toLocaleString('en-IN')}</span>
+                  </div>
+                  ${bill.discount > 0 ? `
+                  <div style="display: flex; justify-content: space-between; font-size: 14px; color: #27AE60; margin-bottom: 8px;">
+                    <span>Discount</span>
+                    <span style="font-weight: 600;">- ₹${bill.discount.toLocaleString('en-IN')}</span>
+                  </div>` : ''}
+                  <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; color: #4A1E27; border-top: 1.5px solid #C5A059; padding-top: 10px; margin-top: 6px;">
+                    <span>GRAND TOTAL</span>
+                    <span>₹${total.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; color: #5B4D43; margin-top: 8px;">
+                    <span>Amount Paid</span>
+                    <span style="font-weight: 700; color: #27AE60;">₹${paid.toLocaleString('en-IN')}</span>
+                  </div>
+                  ${due > 0 ? `
+                  <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; color: #C0392B; border-top: 1px dashed #D8C397; padding-top: 8px; margin-top: 8px;">
+                    <span>BALANCE PAYABLE</span>
+                    <span>₹${due.toLocaleString('en-IN')}</span>
+                  </div>` : ''}
+                </div>
+              </div>
+
+              <!-- Footer Stamp & Signature -->
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #D8C397; padding-top: 24px;">
+                <div>
+                  <div style="font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 700; font-style: italic; color: #4A1E27;">Thank you for adorning Riwaaz!</div>
+                  <div style="font-size: 11px; color: #8C7A6B; margin-top: 4px;">Handcrafted luxury ethnic ensembles · All disputes subject to Indore jurisdiction</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="width: 140px; border-bottom: 1px solid #2C221E; height: 30px;"></div>
+                  <div style="font-size: 11px; font-weight: 700; color: #5B4D43; text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;">Authorized Signature</div>
+                </div>
               </div>
             </div>
-            
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            
-            <!-- Metadata Info -->
-            <div style="font-size:9px; line-height:1.4; margin-bottom:8px;">
-              <div style="display:flex; justify-content:space-between;"><span>BILL NO:</span><span style="font-weight:700;">${bill.billNumber}</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>DATE:</span><span>${H.formatDate(bill.date)} ${bill.time ? ' | ' + bill.time : ''}</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>CUSTOMER:</span><span style="font-weight:700; text-transform:uppercase;">${H.escHtml(bill.customer.name || 'Walk-in Customer')}</span></div>
-              ${bill.customer.phone ? `<div style="display:flex; justify-content:space-between;"><span>PHONE:</span><span>${bill.customer.phone}</span></div>` : ''}
+          </div>
+        </body>
+        </html>
+      `;
+    } else {
+      // Luxury Boutique Thermal Receipt (72mm/80mm)
+      return `
+        <html>
+        <head>
+          <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+          <style>
+            @page { size: 72mm auto; margin: 0mm; }
+            body, html { margin: 0; padding: 0; background: white; font-family: 'Outfit', sans-serif; color: #000; width: 72mm; }
+            .print-receipt-container { width: 72mm !important; padding: 12px 6px; box-sizing: border-box; }
+          </style>
+        </head>
+        <body>
+          <div class="print-receipt-container">
+            <div style="text-align: center; border-bottom: 2px double #000; padding-bottom: 10px; margin-bottom: 10px;">
+              <div style="font-size: 10px; letter-spacing: 4px;">✧ ✦ ✧</div>
+              <div style="font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">RIWAAZ</div>
+              <div style="font-family: 'Cormorant Garamond', serif; font-size: 11px; font-style: italic; letter-spacing: 2px;">by Eshmira</div>
+              <div style="font-size: 8px; margin-top: 6px; line-height: 1.4; text-transform: uppercase;">
+                ${CONFIG.address}<br/>
+                📞 9827788773
+              </div>
             </div>
 
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            
-            <!-- Items Table -->
-            <table style="width:100%; border-collapse:collapse; font-size:9px; margin:8px 0;">
+            <div style="font-size: 10px; line-height: 1.5; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px;">
+              <div style="display:flex; justify-content:space-between;"><span>INVOICE #:</span><span style="font-weight:700;">#${bill.id || bill.billNumber}</span></div>
+              <div style="display:flex; justify-content:space-between;"><span>DATE:</span><span>${H.formatDate(bill.date || H.today())}</span></div>
+              <div style="display:flex; justify-content:space-between;"><span>CUSTOMER:</span><span style="font-weight:700;">${H.escHtml(bill.customer?.name || 'Walk-in')}</span></div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 10px;">
               <thead>
-                <tr style="border-bottom:1px solid #000;">
-                  <th style="text-align:left; padding:4px 0; font-weight:700;">ITEM DETAILS</th>
-                  <th style="text-align:center; padding:4px 0; font-weight:700; width:30px;">QTY</th>
-                  <th style="text-align:right; padding:4px 0; font-weight:700; width:60px;">AMOUNT</th>
+                <tr style="border-bottom: 1px solid #000;">
+                  <th style="text-align:left; padding: 4px 0;">ITEM</th>
+                  <th style="text-align:center; padding: 4px 0; width: 25px;">QTY</th>
+                  <th style="text-align:right; padding: 4px 0; width: 55px;">AMT</th>
                 </tr>
               </thead>
               <tbody>
                 ${bill.items.map(it => `
-                  <tr style="border-bottom:1px dotted #888;">
-                    <td style="padding:6px 0; word-break:break-word; max-width:120px; line-height:1.2;">
-                      <div style="font-size:8px; font-weight:700; text-transform:uppercase; color:#000;">${H.escHtml(it.category)}</div>
-                      <div style="font-size:9px; font-weight:400; color:#333;">${H.escHtml(it.description || 'Item')}</div>
-                      ${it.details ? `<div style="font-size:7px; color:#555; font-style:italic;">${H.escHtml(it.details)}</div>` : ''}
+                  <tr style="border-bottom: 1px dotted #999;">
+                    <td style="padding: 6px 0;">
+                      <div style="font-weight:700;">${H.escHtml(it.description || 'Ensemble')}</div>
+                      <div style="font-size:8px; color:#444;">${H.escHtml(it.category || 'Suit')}</div>
                     </td>
-                    <td style="text-align:center; padding:6px 0; vertical-align:middle; font-weight:500;">${it.qty}</td>
-                    <td style="text-align:right; padding:6px 0; vertical-align:middle; font-weight:700;">₹${it.total.toLocaleString('en-IN')}</td>
+                    <td style="text-align:center; font-weight:600;">${it.qty}</td>
+                    <td style="text-align:right; font-weight:700;">₹${(it.total||0).toLocaleString('en-IN')}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
-            
-            <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-            
-            <!-- Summary Totals -->
-            <div style="font-size:9px; line-height:1.5; margin-left:auto; width:100%; max-width:170px; text-align:right;">
-              <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹${bill.subtotal.toLocaleString('en-IN')}</span></div>
-              ${bill.discount > 0 ? `<div style="display:flex; justify-content:space-between; font-weight:500;"><span>Discount:</span><span>- ₹${bill.discount.toLocaleString('en-IN')}</span></div>` : ''}
-              <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; border-top:1px dotted #000; padding-top:4px; margin-top:3px; margin-bottom:3px;">
-                <span>GRAND TOTAL:</span><span>₹${bill.total.toLocaleString('en-IN')}</span>
+
+            <div style="border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 8px 0; margin: 10px 0; font-size: 11px;">
+              <div style="display:flex; justify-content:space-between; font-weight:800; font-size: 13px;">
+                <span>GRAND TOTAL:</span>
+                <span>₹${total.toLocaleString('en-IN')}</span>
               </div>
-              <div style="display:flex; justify-content:space-between; color:#333;"><span>Amount Paid:</span><span>₹${(bill.payment.amountPaid || 0).toLocaleString('en-IN')}</span></div>
-              ${bill.payment.due > 0 ? `<div style="display:flex; justify-content:space-between; font-weight:700; color:#c00;"><span>BALANCE DUE:</span><span>₹${bill.payment.due.toLocaleString('en-IN')}</span></div>` : ''}
-              
-              <div style="font-size:8px; color:#000; margin-top:6px; padding:3px 6px; border:1px solid #000; display:inline-block; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">
-                ${bill.payment.status === 'paid' ? '✓ Paid' : bill.payment.status === 'partial' ? '🔶 Partial' : '⏳ Pending'} - ${bill.payment.mode}
+              <div style="display:flex; justify-content:space-between; font-size: 10px; margin-top: 3px;">
+                <span>PAID AMOUNT:</span>
+                <span>₹${paid.toLocaleString('en-IN')}</span>
               </div>
+              ${due > 0 ? `
+              <div style="display:flex; justify-content:space-between; font-weight:800; color:#C0392B; font-size: 11px; margin-top: 3px;">
+                <span>BALANCE PAYABLE:</span>
+                <span>₹${due.toLocaleString('en-IN')}</span>
+              </div>` : ''}
             </div>
-            
-            <div style="border-top:1px dashed #000; margin:6px 0; margin-top:12px;"></div>
-            
-            <!-- Thank you and Premium Boutique Brand Stamp -->
-            <div style="text-align:center; margin-top:16px;">
-              <div style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-weight:300;">✦ ✦ ✦</div>
-              <div style="font-family:'Cormorant Garamond', serif; font-size:16px; font-weight:700; font-style:italic; color:#000;">Thank You!</div>
-              <div style="font-size:8px; color:#444; text-transform:uppercase; letter-spacing:1px; margin-top:3px; margin-bottom:8px;">Visit us again at Riwaaz by Eshmira</div>
+
+            <div style="text-align:center; margin-top: 14px;">
+              <div style="font-family: 'Cormorant Garamond', serif; font-size: 15px; font-weight:700; font-style:italic;">Thank you for adorning Riwaaz!</div>
+              <div style="font-size: 8px; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px;">Luxury Handcrafted Ensembles</div>
             </div>
           </div>
         </body>
