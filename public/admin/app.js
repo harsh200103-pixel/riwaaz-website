@@ -629,22 +629,21 @@ _For queries: ${CONFIG.phone1}_`;
       const dateStr = bill.date || H.today();
 
       let text = `RIWAAZ BY ESHMIRA\n`;
-      text += `Haute Couture & Luxury Ethnic Studio\n`;
-      text += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
       text += `Dear ${custName},\n\n`;
-      text += `We thank you for patronizing Riwaaz by Eshmira. Please find your official invoice summary below:\n\n`;
-      text += `Invoice Number  : #${bill.id}\n`;
-      text += `Invoice Date    : ${dateStr}\n`;
-      text += `Total Amount    : INR ${total.toLocaleString('en-IN')}\n`;
+      text += `Here is your bill from Riwaaz by Eshmira:\n\n`;
+      text += `Invoice No : #${bill.id}\n`;
+      text += `Date       : ${dateStr}\n`;
+      text += `Total      : INR ${total.toLocaleString('en-IN')}\n`;
       if (due > 0) {
-        text += `Amount Paid     : INR ${paid.toLocaleString('en-IN')}\n`;
-        text += `Balance Payable : INR ${due.toLocaleString('en-IN')}\n`;
+        text += `Paid       : INR ${paid.toLocaleString('en-IN')}\n`;
+        text += `Balance    : INR ${due.toLocaleString('en-IN')}\n`;
       } else {
-        text += `Payment Status  : FULLY PAID\n`;
+        text += `Status     : FULLY PAID\n`;
       }
-      text += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      text += `View & Download Official Digital Invoice:\n${brandedLink}\n\n`;
-      text += `Warm Regards,\nRiwaaz by Eshmira\nIndore | Ph: 9827788773, 9770496796`;
+      text += `\n━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      text += `View Official PDF Bill:\n${brandedLink}\n\n`;
+      text += `Warm Regards,\nRiwaaz by Eshmira\nPh: 9827788773, 9770496796`;
       return text;
     } catch (e) {
       console.error("Failed to generate magic link", e);
@@ -4018,10 +4017,9 @@ Views['custom-print'] = {
 
     if (useBluetooth && BluetoothPOS.isConnected()) {
       for (let i = 0; i < copies; i++) {
-        let cmd = "\\x1B\\x40\\x1B\\x61\\x01\\x1B\\x45\\x01RIWAAZ CUSTOM PRINT\\x1B\\x45\\x00\\n";
-        cmd += "--------------------------------\\n";
-        if (text) cmd += `${text}\\n\\n`;
-        cmd += "--------------------------------\\n\\n\\n";
+        let cmd = "\x1B\x40\x1B\x61\x01================================\n\x1B\x21\x08RIWAAZ CUSTOM PRINT\x1B\x21\x00\n================================\n\x1B\x61\x00";
+        if (text) cmd += `${text}\n`;
+        cmd += "================================\n\n\x1D\x56\x41\x03";
         const encoder = new TextEncoder();
         await BluetoothPOS.sendBytes(encoder.encode(cmd));
         if (i < copies - 1) await new Promise(r => setTimeout(r, 800));
