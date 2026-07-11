@@ -190,7 +190,20 @@ const Store = {
 
     return new Promise((resolve) => {
       let loaded = 0;
-      const checkLoaded = () => { if (++loaded === 5) resolve(); };
+      let resolved = false;
+      const doResolve = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
+      };
+
+      // NEVER wait more than 600ms for network snapshots before resolving so the app NEVER stays blank!
+      setTimeout(doResolve, 600);
+
+      const checkLoaded = () => {
+        if (++loaded >= 5) doResolve();
+      };
       
       db.collection('bills').onSnapshot(snap => {
         try {
@@ -198,8 +211,9 @@ const Store = {
           Store.data.bills = bills;
           Store.saveCache('cached_bills', JSON.stringify(bills));
         } catch (err) {}
-        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      }, () => { if (loaded < 5) checkLoaded(); });
+        checkLoaded();
+        Router.go(Router.current);
+      }, () => checkLoaded());
       
       db.collection('products').onSnapshot(snap => {
         try {
@@ -207,8 +221,9 @@ const Store = {
           Store.data.products = products;
           Store.saveCache('cached_products', JSON.stringify(products));
         } catch (err) {}
-        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      }, () => { if (loaded < 5) checkLoaded(); });
+        checkLoaded();
+        Router.go(Router.current);
+      }, () => checkLoaded());
       
       db.collection('customers').onSnapshot(snap => {
         try {
@@ -216,8 +231,9 @@ const Store = {
           Store.data.customers = customers;
           Store.saveCache('cached_customers', JSON.stringify(customers));
         } catch (err) {}
-        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      }, () => { if (loaded < 5) checkLoaded(); });
+        checkLoaded();
+        Router.go(Router.current);
+      }, () => checkLoaded());
       
       db.collection('returns').onSnapshot(snap => {
         try {
@@ -225,8 +241,9 @@ const Store = {
           Store.data.returns = returns;
           Store.saveCache('cached_returns', JSON.stringify(returns));
         } catch (err) {}
-        if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      }, () => { if (loaded < 5) checkLoaded(); });
+        checkLoaded();
+        Router.go(Router.current);
+      }, () => checkLoaded());
       
       db.collection('metadata').doc('counters').onSnapshot(snap => {
         try {
@@ -238,8 +255,8 @@ const Store = {
             Store.data.billCounter = 0;
           }
         } catch (err) {}
-        if (loaded < 5) checkLoaded();
-      }, () => { if (loaded < 5) checkLoaded(); });
+        checkLoaded();
+      }, () => checkLoaded());
     });
   },
 
