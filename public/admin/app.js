@@ -1785,8 +1785,13 @@ const Billing = {
       <div class="item-col item-col-desc" style="position:relative;">
         <label class="mobile-only-label">Item Name</label>
         <div style="display:flex;gap:4px;">
-          <input id="${uniqueId}" class="form-input item-desc" list="inventory-autocomplete-list" placeholder="Pick from Inventory or speak..." value="${H.escHtml(desc)}" style="height:44px;font-size:14px;flex:1;" onchange="Billing.autofillFromInventory(this)">
-          <button type="button" class="btn btn-sm btn-outline" style="padding:0 10px;font-size:13px;height:44px;flex-shrink:0;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('${uniqueId}')" title="Voice Type">🎙️</button>
+          <input id="${uniqueId}" class="form-input item-desc" placeholder="Speak or tap suit name..." value="${H.escHtml(desc)}" style="height:44px;font-size:14px;flex:1;">
+          <button type="button" class="btn btn-sm btn-outline" style="padding:0 10px;font-size:13px;height:44px;flex-shrink:0;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('${uniqueId}')" title="Voice Type">🎙️ Speak</button>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">
+          ${['Pure Cotton Suit', 'Jaipuri Suit', 'Kalamkari Print', 'Chanderi Silk', 'Anarkali Set', 'Malmal Dupatta', 'Organza Dupatta', 'Banarasi Silk', 'Co-ord Set'].map(chip => `
+            <button type="button" style="cursor:pointer;border:1px solid var(--gold-300);background:var(--cream-50);color:var(--dark-800);border-radius:12px;font-size:11px;padding:2px 8px;" onclick="const el=document.getElementById('${uniqueId}'); el.value = el.value ? el.value + ' ' + '${chip}' : '${chip}'">+ ${chip}</button>
+          `).join('')}
         </div>
       </div>
       <div class="item-col item-col-details">
@@ -1928,10 +1933,6 @@ Views['new-bill'] = {
                   <option value="Cotton">
                   <option value="Crepe">
                   <option value="Silk">
-                </datalist>
-                <datalist id="inventory-autocomplete-list">
-                  ${(Store.getProducts() || []).map(p => `<option value="${H.escHtml(p.name)}">`).join('')}
-                </datalist>
               </div>
               <div class="form-group">
                 <label class="form-label">Phone Number</label>
