@@ -613,10 +613,17 @@ _For queries: ${CONFIG.phone1}_`;
 
   printAndShare: async (bill, type) => {
     localStorage.setItem('printerType', type);
+    const copies = parseInt(document.getElementById('bill-print-copies')?.value || '1', 10);
     if (type === 'thermal' && BluetoothPOS.isConnected()) {
-      await BluetoothPOS.printBillRaw(bill);
+      for (let i = 0; i < copies; i++) {
+        await BluetoothPOS.printBillRaw(bill);
+        if (i < copies - 1) await new Promise(r => setTimeout(r, 1200));
+      }
+      return;
     }
-    Print.bill(bill);
+    for (let i = 0; i < copies; i++) {
+      Print.bill(bill);
+    }
   },
 
   openShareModal: (bill) => {
@@ -656,6 +663,15 @@ _For queries: ${CONFIG.phone1}_`;
             📋 Copy Bill Text
           </button>
            <div style="height:1px;background:var(--cream-200);margin:6px 0"></div>
+           <div style="background:var(--cream-100);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+             <span style="font-size:12px;font-weight:600;color:var(--dark-800);">Copies to Print:</span>
+             <select id="bill-print-copies" class="form-select" style="width:95px;height:30px;padding:2px 8px;font-size:12px;background:#fff;">
+               <option value="1">1 Copy</option>
+               <option value="2">2 Copies</option>
+               <option value="3">3 Copies</option>
+               <option value="4">4 Copies</option>
+             </select>
+           </div>
           <button class="btn btn-print btn-full" style="background:#4A3020;color:#fff" onclick="Share.printAndShare(Store.getBill('${bill.id}'), 'a4')">
             🖨️ Print A4 Invoice
           </button>
@@ -1927,6 +1943,11 @@ Views['new-bill'] = {
             <div id="no-items-msg" style="text-align:center;padding:24px;color:var(--text-muted);font-size:14px">
               Click <strong>"+ Add Item"</strong> to start adding products
             </div>
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--cream-200); display: flex; justify-content: flex-start;">
+              <button class="btn btn-sm" onclick="Billing.addItemRow()" style="height:36px; padding:0 16px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; background:var(--gold-100); border:1px solid var(--gold-400); color:var(--gold-800); border-radius:8px;">
+                <span style="font-size:16px;font-weight:700;">+</span> Add Another Item Below
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2636,6 +2657,12 @@ Views['inventory'] = {
           <select id="printer-type" class="form-select" style="width:auto; padding:4px 24px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" onchange="localStorage.setItem('printerType', this.value)">
             <option value="thermal" ${localStorage.getItem('printerType')==='a4'?'':'selected'}>Thermal Printer</option>
             <option value="a4" ${localStorage.getItem('printerType')==='a4'?'selected':''}>Normal A4 Printer</option>
+          </select>
+          <select id="barcode-default-copies" class="form-select" style="width:auto; padding:4px 20px 4px 8px; height:32px; font-size:12px; background-color:var(--gray-50); border-color:var(--gray-200)" title="Copies per print">
+            <option value="1">1 Copy</option>
+            <option value="2">2 Copies</option>
+            <option value="3">3 Copies</option>
+            <option value="5">5 Copies</option>
           </select>
           <button class="btn btn-outline" onclick="Views.inventory.printAllBarcodes()">🖨️ Print All Barcodes</button>
           <button class="btn btn-gold" onclick="Views.inventory.openAddModal()">+ Add Product</button>
@@ -3736,6 +3763,142 @@ Views['returns'] = {
     Store.addReturn(ret);
     Toast.show('✓ Return logged successfully!', 'success');
     Views.returns.render();
+  }
+};
+
+// ═══════════════════════════ VIEW: CUSTOM PRINT STUDIO ══
+Views['custom-print'] = {
+  customImage: null,
+
+  handleFileSelect: (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      Views['custom-print'].customImage = evt.target.result;
+      const previewEl = document.getElementById('custom-print-preview');
+      if (previewEl) {
+        previewEl.innerHTML = `<img src="${evt.target.result}" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--cream-300);">`;
+      }
+    };
+    reader.readAsDataURL(file);
+  },
+
+  printCustom: async (useBluetooth = false) => {
+    const text = document.getElementById('custom-print-text')?.value || '';
+    const copies = parseInt(document.getElementById('custom-print-copies')?.value || '1', 10);
+    const format = document.getElementById('custom-print-format')?.value || 'receipt';
+
+    if (!text && !Views['custom-print'].customImage) {
+      Toast.show('⚠️ Please enter text or upload an image/file to print', 'error');
+      return;
+    }
+
+    if (useBluetooth && BluetoothPOS.isConnected()) {
+      for (let i = 0; i < copies; i++) {
+        let cmd = "\\x1B\\x40\\x1B\\x61\\x01\\x1B\\x45\\x01RIWAAZ CUSTOM PRINT\\x1B\\x45\\x00\\n";
+        cmd += "--------------------------------\\n";
+        if (text) cmd += `${text}\\n\\n`;
+        cmd += "--------------------------------\\n\\n\\n";
+        const encoder = new TextEncoder();
+        await BluetoothPOS.sendBytes(encoder.encode(cmd));
+        if (i < copies - 1) await new Promise(r => setTimeout(r, 800));
+      }
+      Toast.show(`✓ Sent ${copies} copy/copies to Seznik Bluetooth Printer!`, 'success');
+      return;
+    }
+
+    // System / Preview print
+    let iframe = document.getElementById('print-iframe');
+    if (iframe) iframe.remove();
+    iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <html>
+      <head>
+        <title>Custom Print - Riwaaz</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; text-align: center; }
+          .page { page-break-after: always; margin-bottom: 20px; }
+          .brand { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; letter-spacing: 2px; }
+          .content { margin-top: 15px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+          img { max-width: 100%; max-height: 400px; margin-top: 10px; }
+        </style>
+      </head>
+      <body>
+        ${Array.from({ length: copies }).map(() => `
+          <div class="page">
+            <div class="brand">RIWAAZ BY ESHMIRA</div>
+            ${Views['custom-print'].customImage ? `<img src="${Views['custom-print'].customImage}">` : ''}
+            ${text ? `<div class="content">${H.escHtml(text)}</div>` : ''}
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `);
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }, 400);
+  },
+
+  render: () => {
+    const v = document.getElementById('app-view');
+    v.innerHTML = `
+      <div class="view-header">
+        <h1>🖨️ Custom Print Studio</h1>
+        <p style="color:var(--text-muted)">Print custom notes, policies, files, or images with selectable copies</p>
+      </div>
+
+      <div class="card" style="max-width:680px;margin:0 auto;padding:24px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+          <button class="btn btn-sm btn-outline" onclick="BluetoothPOS.connect()">⚡ Connect Seznik Printer</button>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">1. Enter Custom Text / Policy / Notes</label>
+          <textarea id="custom-print-text" class="form-input" rows="4" placeholder="Enter note, custom message, exchange policy, or address..."></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">2. Upload File / Image / Document (Optional)</label>
+          <input type="file" id="custom-print-file" class="form-input" accept="image/*,.pdf" onchange="Views['custom-print'].handleFileSelect(event)">
+          <div id="custom-print-preview" style="margin-top:12px;"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+          <div class="form-group">
+            <label class="form-label">Number of Copies</label>
+            <input type="number" id="custom-print-copies" class="form-input" min="1" max="50" value="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Paper Format</label>
+            <select id="custom-print-format" class="form-select">
+              <option value="receipt">Thermal Receipt Roll</option>
+              <option value="label">Thermal Sticker (50x25mm)</option>
+              <option value="a4">Standard Sheet (A4)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-gold" style="flex:1;height:44px;font-size:14px;" onclick="Views['custom-print'].printCustom(false)">
+            🖨️ Print Copies (System / RawBT)
+          </button>
+          <button class="btn btn-outline" style="flex:1;height:44px;font-size:14px;border-color:var(--gold-500);color:var(--gold-700);" onclick="Views['custom-print'].printCustom(true)">
+            ⚡ Print via Seznik Bluetooth
+          </button>
+        </div>
+      </div>
+    `;
   }
 };
 
