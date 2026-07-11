@@ -802,14 +802,27 @@ const BluetoothPOS = {
     return false;
   },
 
+  disconnect: () => {
+    try {
+      if (BluetoothPOS.device && BluetoothPOS.device.gatt && BluetoothPOS.device.gatt.connected) {
+        BluetoothPOS.device.gatt.disconnect();
+      }
+    } catch (e) {}
+    BluetoothPOS.characteristic = null;
+    BluetoothPOS.updateButtons(false);
+    Toast.show('⚡ Printer disconnected.', 'gold');
+  },
+
   updateButtons: (connected) => {
-    document.querySelectorAll('button[onclick*="BluetoothPOS.connect"]').forEach(btn => {
+    document.querySelectorAll('button[onclick*="BluetoothPOS.connect"], button[onclick*="BluetoothPOS.disconnect"]').forEach(btn => {
       if (connected) {
         btn.innerHTML = '✅ Printer Ready';
+        btn.setAttribute('onclick', 'BluetoothPOS.disconnect()');
         btn.style.borderColor = '#166534';
         btn.style.color = '#166534';
       } else {
         btn.innerHTML = '⚡ Connect Printer';
+        btn.setAttribute('onclick', 'BluetoothPOS.connect()');
         btn.style.borderColor = '';
         btn.style.color = '';
       }
@@ -817,6 +830,23 @@ const BluetoothPOS = {
   },
 
   connectSilent: async () => {
+    if (BluetoothPOS.device && BluetoothPOS.device.gatt) {
+      try {
+        if (BluetoothPOS.device.gatt.connected && BluetoothPOS.characteristic) return true;
+        const server = await BluetoothPOS.device.gatt.connect();
+        const services = await server.getPrimaryServices();
+        for (const service of services) {
+          const characteristics = await service.getCharacteristics();
+          for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+              BluetoothPOS.characteristic = char;
+              BluetoothPOS.updateButtons(true);
+              return true;
+            }
+          }
+        }
+      } catch (e) {}
+    }
     if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return false;
     try {
       const devices = await navigator.bluetooth.getDevices();
@@ -858,21 +888,18 @@ const BluetoothPOS = {
         const chunk = uint8array.slice(i, i + chunkSize);
         await BluetoothPOS.characteristic.writeValueWithoutResponse(chunk);
       }
-      // Auto-release Bluetooth channel after 2.5 seconds so multiple phones can share the same printer
-      setTimeout(() => {
-        try {
-          if (BluetoothPOS.device && BluetoothPOS.device.gatt && BluetoothPOS.device.gatt.connected) {
-            BluetoothPOS.device.gatt.disconnect();
-            BluetoothPOS.characteristic = null;
-            BluetoothPOS.updateButtons(false);
-          }
-        } catch (e) {}
-      }, 2500);
       return true;
     } catch (e) {
       console.error("Bluetooth write error:", e);
-      Toast.show('⚠️ Printer communication error. Please reconnect.', 'error');
+      Toast.show('⚠️ Printer communication error. Reconnecting...', 'gold');
       BluetoothPOS.characteristic = null;
+      let re = await BluetoothPOS.connectSilent();
+      if (re && BluetoothPOS.characteristic) {
+        try {
+          await BluetoothPOS.characteristic.writeValueWithoutResponse(uint8array);
+          return true;
+        } catch (err) {}
+      }
       BluetoothPOS.updateButtons(false);
       return false;
     }
