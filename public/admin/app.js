@@ -934,17 +934,22 @@ const BluetoothPOS = {
     const encoder = new TextEncoder();
     let text = "\x1B\x40"; // ESC @ Init
     text += "\x1B\x61\x01"; // Center align
-    text += "\x1B\x21\x08"; // Bold ON
-    text += "RIWAAZ BY ESHMIRA\n";
+    text += "================================\n";
+    text += "\x1B\x21\x38"; // Double width + height bold
+    text += "RIWAAZ\n";
+    text += "\x1B\x21\x08"; // Standard bold
+    text += "BY ESHMIRA\n";
     text += "\x1B\x21\x00"; // Normal
-    text += "Haute Couture & Ethnic Studio\n";
     text += `Ph: ${CONFIG.phone1} | ${CONFIG.phone2}\n`;
-    text += "--------------------------------\n";
+    text += "================================\n";
     text += "\x1B\x61\x00"; // Left align
-    text += `Bill #: ${bill.billNumber}\n`;
-    text += `Date  : ${H.formatDate(bill.date)}\n`;
-    text += `Cust  : ${bill.customer?.name || 'Walk-in'}\n`;
-    if (bill.customer?.phone) text += `Phone : ${bill.customer.phone}\n`;
+    const shortDate = H.formatDate(bill.date).split(',')[0];
+    const bNo = `Bill: ${bill.billNumber}`.slice(0, 18);
+    const dtStr = shortDate.slice(0, 12);
+    text += `${bNo}${' '.repeat(Math.max(1, 32 - (bNo.length + dtStr.length)))}${dtStr}\n`;
+    const custName = `Cust: ${bill.customer?.name || 'Walk-in'}`.slice(0, 18);
+    const custPh = bill.customer?.phone ? bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
+    text += `${custName}${' '.repeat(Math.max(1, 32 - (custName.length + custPh.length)))}${custPh}\n`;
     text += "--------------------------------\n";
     (bill.items || []).forEach(it => {
       const name = (it.description || it.category || 'Item').slice(0, 18);
@@ -955,19 +960,20 @@ const BluetoothPOS = {
     text += "--------------------------------\n";
     text += "\x1B\x21\x08"; // Bold ON
     const totalRight = `INR ${H.fmtNum(bill.total)}`;
-    const totalSpaces = Math.max(1, 32 - ("GRAND TOTAL".length + totalRight.length));
-    text += `GRAND TOTAL${' '.repeat(totalSpaces)}${totalRight}\n`;
+    const totalSpaces = Math.max(1, 32 - ("TOTAL".length + totalRight.length));
+    text += `TOTAL${' '.repeat(totalSpaces)}${totalRight}\n`;
     text += "\x1B\x21\x00"; // Normal
-    text += `Payment Mode : ${bill.payment?.mode || 'Cash'}\n`;
+    text += `Mode : ${bill.payment?.mode || 'Cash'}\n`;
     if (bill.payment?.due > 0) {
-      text += `Paid Amount  : INR ${H.fmtNum(bill.payment.amountPaid || 0)}\n`;
-      text += `BALANCE DUE  : INR ${H.fmtNum(bill.payment.due)}\n`;
+      text += `Paid : INR ${H.fmtNum(bill.payment.amountPaid || 0)}\n`;
+      text += `Due  : INR ${H.fmtNum(bill.payment.due)}\n`;
     }
-    text += "--------------------------------\n";
+    text += "================================\n";
     text += "\x1B\x61\x01"; // Center align
-    text += "Thank you for adorning Riwaaz!\n";
-    text += "No Exchange / No Refund\n\n";
-    text += "\x1D\x56\x41\x03"; // GS V cut paper
+    text += "\x1B\x21\x08"; // Bold
+    text += "Thank You! Visit Again\n";
+    text += "\x1B\x21\x00"; // Normal
+    text += "\x1D\x56\x41\x03"; // GS V cut paper immediately
     await BluetoothPOS.sendBytes(encoder.encode(text));
   },
 
