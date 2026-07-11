@@ -950,13 +950,18 @@ const BluetoothPOS = {
   },
 
   printBillRaw: async (bill) => {
+    if (!bill) { Toast.show('⚠️ No bill data to print', 'error'); return; }
+
     // Build ESC/POS binary byte array accurately
     const enc = new TextEncoder();
     const parts = [];
     const t = (str) => parts.push(enc.encode(str));
     const b = (...bytes) => parts.push(new Uint8Array(bytes));
 
-    b(0x1B, 0x40);           // ESC @ Init
+    // Force ESC/POS receipt mode (exits TSPL label mode if printer was in it)
+    b(0x1B, 0x40);           // ESC @ Init / reset to ESC/POS mode
+    await new Promise(r => setTimeout(r, 80)); // wait for printer to reset mode
+
     b(0x1B, 0x61, 0x01);     // Center align
     t("================================\n");
     b(0x1B, 0x21, 0x38);     // Double width + height bold
@@ -968,22 +973,24 @@ const BluetoothPOS = {
     t("================================\n");
     b(0x1B, 0x61, 0x00);     // Left align
     const shortDate = H.formatDate(bill.date).split(',')[0];
-    const bNo = `Bill: ${bill.billNumber}`.slice(0, 18);
+    const bNo = `Bill: ${bill.billNumber || bill.id || ''}`.slice(0, 18);
     const dtStr = shortDate.slice(0, 12);
     t(`${bNo}${' '.repeat(Math.max(1, 32 - (bNo.length + dtStr.length)))}${dtStr}\n`);
     const custName = `Cust: ${bill.customer?.name || 'Walk-in'}`.slice(0, 18);
     const custPh = bill.customer?.phone ? bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
     t(`${custName}${' '.repeat(Math.max(1, 32 - (custName.length + custPh.length)))}${custPh}\n`);
     t("--------------------------------\n");
-    (bill.items || []).forEach(it => {
-      const name = (it.description || it.category || 'Item').slice(0, 18);
-      const right = `INR ${H.fmtNum(it.total)}`;
+    const items = bill.items || [];
+    if (items.length === 0) t("  (No items)\n");
+    items.forEach(it => {
+      const name = (it.description || it.name || it.category || 'Item').slice(0, 18);
+      const right = `INR ${H.fmtNum(it.total || (it.price * (it.qty || 1)))}`;
       const spaces = Math.max(1, 32 - (`${it.qty}x ${name}`.length + right.length));
       t(`${it.qty}x ${name}${' '.repeat(spaces)}${right}\n`);
     });
     t("--------------------------------\n");
     b(0x1B, 0x21, 0x08);     // Bold ON
-    const totalRight = `INR ${H.fmtNum(bill.total)}`;
+    const totalRight = `INR ${H.fmtNum(bill.total || 0)}`;
     const totalSpaces = Math.max(1, 32 - ("TOTAL".length + totalRight.length));
     t(`TOTAL${' '.repeat(totalSpaces)}${totalRight}\n`);
     b(0x1B, 0x21, 0x00);     // Normal
