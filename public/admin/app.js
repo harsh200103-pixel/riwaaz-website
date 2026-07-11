@@ -933,27 +933,40 @@ const BluetoothPOS = {
   printBillRaw: async (bill) => {
     const encoder = new TextEncoder();
     let text = "\x1B\x40"; // ESC @ Init
-    text += "\x1B\x61\x01"; // ESC a 1 Center
-    text += "================================\n";
-    text += "\x1B\x45\x01RIWAAZ BY ESHMIRA\x1B\x45\x00\n";
-    text += "Premium Ethnic Boutique\n";
-    text += "Indore | Ph: 9827788773\n";
-    text += "================================\n";
-    text += "\x1B\x61\x00"; // ESC a 0 Left align
+    text += "\x1B\x61\x01"; // Center align
+    text += "\x1B\x21\x08"; // Bold ON
+    text += "RIWAAZ BY ESHMIRA\n";
+    text += "\x1B\x21\x00"; // Normal
+    text += "Haute Couture & Ethnic Studio\n";
+    text += `Ph: ${CONFIG.phone1} | ${CONFIG.phone2}\n`;
+    text += "--------------------------------\n";
+    text += "\x1B\x61\x00"; // Left align
     text += `Bill #: ${bill.billNumber}\n`;
     text += `Date  : ${H.formatDate(bill.date)}\n`;
     text += `Cust  : ${bill.customer?.name || 'Walk-in'}\n`;
     if (bill.customer?.phone) text += `Phone : ${bill.customer.phone}\n`;
     text += "--------------------------------\n";
     (bill.items || []).forEach(it => {
-      text += `${it.category} (${it.qty}x)\n`;
-      text += `  @ INR ${it.price} -> INR ${it.total}\n`;
+      const name = (it.description || it.category || 'Item').slice(0, 18);
+      const right = `INR ${H.fmtNum(it.total)}`;
+      const spaces = Math.max(1, 32 - (`${it.qty}x ${name}`.length + right.length));
+      text += `${it.qty}x ${name}${' '.repeat(spaces)}${right}\n`;
     });
     text += "--------------------------------\n";
-    text += `TOTAL : INR ${bill.total}\n`;
-    text += `MODE  : ${bill.payment?.mode || 'Cash'}\n`;
+    text += "\x1B\x21\x08"; // Bold ON
+    const totalRight = `INR ${H.fmtNum(bill.total)}`;
+    const totalSpaces = Math.max(1, 32 - ("GRAND TOTAL".length + totalRight.length));
+    text += `GRAND TOTAL${' '.repeat(totalSpaces)}${totalRight}\n`;
+    text += "\x1B\x21\x00"; // Normal
+    text += `Payment Mode : ${bill.payment?.mode || 'Cash'}\n`;
+    if (bill.payment?.due > 0) {
+      text += `Paid Amount  : INR ${H.fmtNum(bill.payment.amountPaid || 0)}\n`;
+      text += `BALANCE DUE  : INR ${H.fmtNum(bill.payment.due)}\n`;
+    }
     text += "--------------------------------\n";
-    text += "\x1B\x61\x01Thank You! Visit Again\n\n\n\n";
+    text += "\x1B\x61\x01"; // Center align
+    text += "Thank you for adorning Riwaaz!\n";
+    text += "No Exchange / No Refund\n\n";
     text += "\x1D\x56\x41\x03"; // GS V cut paper
     await BluetoothPOS.sendBytes(encoder.encode(text));
   },
