@@ -950,50 +950,62 @@ const BluetoothPOS = {
   },
 
   printBillRaw: async (bill) => {
-    const encoder = new TextEncoder();
-    let text = "\x1B\x40"; // ESC @ Init
-    text += "\x1B\x61\x01"; // Center align
-    text += "================================\n";
-    text += "\x1B\x21\x38"; // Double width + height bold
-    text += "RIWAAZ\n";
-    text += "\x1B\x21\x08"; // Standard bold
-    text += "BY ESHMIRA\n";
-    text += "\x1B\x21\x00"; // Normal
-    text += `Ph: ${CONFIG.phone1} | ${CONFIG.phone2}\n`;
-    text += "================================\n";
-    text += "\x1B\x61\x00"; // Left align
+    // Build ESC/POS binary byte array accurately
+    const enc = new TextEncoder();
+    const parts = [];
+    const t = (str) => parts.push(enc.encode(str));
+    const b = (...bytes) => parts.push(new Uint8Array(bytes));
+
+    b(0x1B, 0x40);           // ESC @ Init
+    b(0x1B, 0x61, 0x01);     // Center align
+    t("================================\n");
+    b(0x1B, 0x21, 0x38);     // Double width + height bold
+    t("RIWAAZ\n");
+    b(0x1B, 0x21, 0x08);     // Standard bold
+    t("BY ESHMIRA\n");
+    b(0x1B, 0x21, 0x00);     // Normal
+    t(`Ph: ${CONFIG.phone1} | ${CONFIG.phone2}\n`);
+    t("================================\n");
+    b(0x1B, 0x61, 0x00);     // Left align
     const shortDate = H.formatDate(bill.date).split(',')[0];
     const bNo = `Bill: ${bill.billNumber}`.slice(0, 18);
     const dtStr = shortDate.slice(0, 12);
-    text += `${bNo}${' '.repeat(Math.max(1, 32 - (bNo.length + dtStr.length)))}${dtStr}\n`;
+    t(`${bNo}${' '.repeat(Math.max(1, 32 - (bNo.length + dtStr.length)))}${dtStr}\n`);
     const custName = `Cust: ${bill.customer?.name || 'Walk-in'}`.slice(0, 18);
     const custPh = bill.customer?.phone ? bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
-    text += `${custName}${' '.repeat(Math.max(1, 32 - (custName.length + custPh.length)))}${custPh}\n`;
-    text += "--------------------------------\n";
+    t(`${custName}${' '.repeat(Math.max(1, 32 - (custName.length + custPh.length)))}${custPh}\n`);
+    t("--------------------------------\n");
     (bill.items || []).forEach(it => {
       const name = (it.description || it.category || 'Item').slice(0, 18);
       const right = `INR ${H.fmtNum(it.total)}`;
       const spaces = Math.max(1, 32 - (`${it.qty}x ${name}`.length + right.length));
-      text += `${it.qty}x ${name}${' '.repeat(spaces)}${right}\n`;
+      t(`${it.qty}x ${name}${' '.repeat(spaces)}${right}\n`);
     });
-    text += "--------------------------------\n";
-    text += "\x1B\x21\x08"; // Bold ON
+    t("--------------------------------\n");
+    b(0x1B, 0x21, 0x08);     // Bold ON
     const totalRight = `INR ${H.fmtNum(bill.total)}`;
     const totalSpaces = Math.max(1, 32 - ("TOTAL".length + totalRight.length));
-    text += `TOTAL${' '.repeat(totalSpaces)}${totalRight}\n`;
-    text += "\x1B\x21\x00"; // Normal
-    text += `Mode : ${bill.payment?.mode || 'Cash'}\n`;
+    t(`TOTAL${' '.repeat(totalSpaces)}${totalRight}\n`);
+    b(0x1B, 0x21, 0x00);     // Normal
+    t(`Mode : ${bill.payment?.mode || 'Cash'}\n`);
     if (bill.payment?.due > 0) {
-      text += `Paid : INR ${H.fmtNum(bill.payment.amountPaid || 0)}\n`;
-      text += `Due  : INR ${H.fmtNum(bill.payment.due)}\n`;
+      t(`Paid : INR ${H.fmtNum(bill.payment.amountPaid || 0)}\n`);
+      t(`Due  : INR ${H.fmtNum(bill.payment.due)}\n`);
     }
-    text += "================================\n";
-    text += "\x1B\x61\x01"; // Center align
-    text += "\x1B\x21\x08"; // Bold
-    text += "Thank You! Visit Again\n";
-    text += "\x1B\x21\x00"; // Normal
-    text += "\x1D\x56\x41\x03"; // GS V cut paper immediately
-    await BluetoothPOS.sendBytes(encoder.encode(text));
+    t("================================\n");
+    b(0x1B, 0x61, 0x01);     // Center align
+    b(0x1B, 0x21, 0x08);     // Bold
+    t("Thank You! Visit Again\n");
+    b(0x1B, 0x21, 0x00);     // Normal
+    b(0x1D, 0x56, 0x41, 0x03); // GS V cut paper
+
+    // Combine all parts into one Uint8Array
+    const total = parts.reduce((s, p) => s + p.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const p of parts) { out.set(p, offset); offset += p.length; }
+
+    await BluetoothPOS.sendBytes(out);
   },
 
   printBarcodeRaw: async (p) => {
