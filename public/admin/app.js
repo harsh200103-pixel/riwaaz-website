@@ -159,6 +159,17 @@ const Store = {
     billCounter: 0
   },
   
+  saveCache: (key, val) => {
+    try {
+      localStorage.setItem(key, val);
+    } catch (e) {
+      try {
+        if (key !== 'cached_products') localStorage.removeItem('cached_bills');
+        localStorage.setItem(key, val);
+      } catch (e2) {}
+    }
+  },
+  
   init: async () => {
     // Load from local storage cache for instant rendering!
     try {
@@ -182,39 +193,53 @@ const Store = {
       const checkLoaded = () => { if (++loaded === 5) resolve(); };
       
       db.collection('bills').onSnapshot(snap => {
-        const bills = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        Store.data.bills = bills;
-        localStorage.setItem('cached_bills', JSON.stringify(bills));
+        try {
+          const bills = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          Store.data.bills = bills;
+          Store.saveCache('cached_bills', JSON.stringify(bills));
+        } catch (err) {}
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      });
+      }, () => { if (loaded < 5) checkLoaded(); });
+      
       db.collection('products').onSnapshot(snap => {
-        const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        Store.data.products = products;
-        localStorage.setItem('cached_products', JSON.stringify(products));
+        try {
+          const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          Store.data.products = products;
+          Store.saveCache('cached_products', JSON.stringify(products));
+        } catch (err) {}
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      });
+      }, () => { if (loaded < 5) checkLoaded(); });
+      
       db.collection('customers').onSnapshot(snap => {
-        const customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        Store.data.customers = customers;
-        localStorage.setItem('cached_customers', JSON.stringify(customers));
+        try {
+          const customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          Store.data.customers = customers;
+          Store.saveCache('cached_customers', JSON.stringify(customers));
+        } catch (err) {}
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      });
+      }, () => { if (loaded < 5) checkLoaded(); });
+      
       db.collection('returns').onSnapshot(snap => {
-        const returns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        Store.data.returns = returns;
-        localStorage.setItem('cached_returns', JSON.stringify(returns));
+        try {
+          const returns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          Store.data.returns = returns;
+          Store.saveCache('cached_returns', JSON.stringify(returns));
+        } catch (err) {}
         if (loaded < 5) checkLoaded(); else Router.go(Router.current);
-      });
+      }, () => { if (loaded < 5) checkLoaded(); });
+      
       db.collection('metadata').doc('counters').onSnapshot(snap => {
-        if (snap.exists) {
-          Store.data.billCounter = snap.data().billCounter || 0;
-          localStorage.setItem('cached_bill_counter', String(Store.data.billCounter));
-        } else {
-          db.collection('metadata').doc('counters').set({ billCounter: 0 });
-          Store.data.billCounter = 0;
-        }
+        try {
+          if (snap.exists) {
+            Store.data.billCounter = snap.data().billCounter || 0;
+            Store.saveCache('cached_bill_counter', String(Store.data.billCounter));
+          } else {
+            db.collection('metadata').doc('counters').set({ billCounter: 0 });
+            Store.data.billCounter = 0;
+          }
+        } catch (err) {}
         if (loaded < 5) checkLoaded();
-      });
+      }, () => { if (loaded < 5) checkLoaded(); });
     });
   },
 
