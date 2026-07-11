@@ -924,6 +924,7 @@ const BluetoothPOS = {
       if (!connected) connected = await BluetoothPOS.connect();
       if (!connected) return false;
     }
+    try {
       // Chunked write with 15ms throttle for BLE & thermal printer hardware buffer limits
       const chunkSize = 100;
       for (let i = 0; i < uint8array.length; i += chunkSize) {
