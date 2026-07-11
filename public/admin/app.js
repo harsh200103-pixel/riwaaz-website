@@ -585,7 +585,6 @@ _For queries: ${CONFIG.phone1}_`;
   },
 
   buildMagicLinkText: async (bill) => {
-    // Securely upload the bill data to the cloud bucket
     try {
       const res = await fetch('https://bytebin.lucko.me/post', {
         method: 'POST',
@@ -595,41 +594,78 @@ _For queries: ${CONFIG.phone1}_`;
       if (!res.ok) throw new Error("Upload failed");
       
       const { key } = await res.json();
-      
-      // Automatically use the current live domain
       const origin = window.location.origin;
       const brandedLink = `${origin}/bill?id=${key}`;
       
-      return `Hi! Your bill from Riwaaz by Eshmira is ready. Click here to view and download your bill: ${brandedLink}`;
+      const custName = bill.customer?.name || 'Customer';
+      const total = bill.total || 0;
+      const paid = bill.paidAmount !== undefined ? bill.paidAmount : total;
+      const due = Math.max(0, total - paid);
+      const dateStr = bill.date || H.today();
+
+      let text = `✨ *RIWAAZ BY ESHMIRA*\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `Dear *${custName}*,\n\n`;
+      text += `Thank you for shopping with us! Here are your official invoice details:\n\n`;
+      text += `📄 *Invoice No:* #${bill.id}\n`;
+      text += `📅 *Date:* ${dateStr}\n`;
+      text += `💰 *Total Amount:* ₹${total.toLocaleString('en-IN')}\n`;
+      if (due > 0) {
+        text += `💵 *Paid Amount:* ₹${paid.toLocaleString('en-IN')}\n`;
+        text += `⚠️ *Balance Payable:* ₹${due.toLocaleString('en-IN')}\n`;
+      } else {
+        text += `✅ *Payment Status:* FULLY PAID\n`;
+      }
+      text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      text += `🔗 *View & Download Official PDF Bill:*\n${brandedLink}\n\n`;
+      text += `Warm Regards,\n*Riwaaz by Eshmira*\n📍 Indore · 📞 9827788773`;
+      return text;
     } catch (e) {
       console.error("Failed to generate magic link", e);
-      alert("Error generating secure link. Please try again or check your connection.");
-      return null;
+      Toast.show("⚠️ Could not generate link, copying standard bill text...", "error");
+      return Share.buildWhatsAppText(bill);
     }
   },
 
   whatsapp: async (bill) => {
-    const tab = window.open('about:blank', '_blank');
-    tab.document.write('<div style="font-family: sans-serif; text-align: center; padding: 50px;"><h2>⏳ Generating Secure Bill Link...</h2><p>Please wait, opening WhatsApp...</p></div>');
-    
+    Toast.show('⏳ Preparing professional WhatsApp invoice...', 'gold');
     const text = await Share.buildMagicLinkText(bill);
-    if (!text) { tab.close(); return; }
-    
-    const phone = bill.customer.phone ? '91' + bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
-    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    tab.location.href = url;
+    if (!text) return;
+
+    const phone = bill.customer?.phone ? '91' + bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      const waAppUrl = phone
+        ? `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`
+        : `whatsapp://send?text=${encodeURIComponent(text)}`;
+      window.location.href = waAppUrl;
+      setTimeout(() => {
+        const apiFallbackUrl = phone
+          ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`
+          : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        window.open(apiFallbackUrl, '_blank');
+      }, 1500);
+      return;
+    }
+
+    const webUrl = phone
+      ? `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`
+      : `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(webUrl, '_blank');
   },
 
   sms: async (bill) => {
+    Toast.show('⏳ Preparing SMS message...', 'gold');
     const text = await Share.buildMagicLinkText(bill);
-    const phone = bill.customer.phone ? bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
+    const phone = bill.customer?.phone ? bill.customer.phone.replace(/\D/g,'').slice(-10) : '';
     const url = `sms:${phone}?body=${encodeURIComponent(text)}`;
     window.location.href = url;
   },
 
-  copyText: (bill) => {
-    const text = Share.buildWhatsAppText(bill);
-    navigator.clipboard.writeText(text).then(() => Toast.show('✓ Bill text copied to clipboard!', 'gold'));
+  copyText: async (bill) => {
+    const text = await Share.buildMagicLinkText(bill);
+    navigator.clipboard.writeText(text).then(() => Toast.show('✓ Professional invoice text copied!', 'gold'));
   },
 
   printAndShare: async (bill, type) => {
