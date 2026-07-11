@@ -57,6 +57,27 @@ const H = {
       console.warn("Audio beep error:", e);
     }
   },
+  voiceType: (inputId) => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      Toast.show('⚠️ Voice typing is not supported in this browser. Please use Google Chrome.', 'error');
+      return;
+    }
+    const rec = new SpeechRec();
+    rec.lang = 'en-IN';
+    rec.interimResults = false;
+    Toast.show('🎙️ Listening... Speak now!', 'gold');
+    rec.onresult = (evt) => {
+      const transcript = evt.results[0][0].transcript;
+      const el = document.getElementById(inputId);
+      if (el) {
+        el.value = el.value ? el.value + ' ' + transcript : transcript;
+        Toast.show('✓ Voice typed successfully!', 'success');
+      }
+    };
+    rec.onerror = () => Toast.show('⚠️ Voice not detected. Try again.', 'error');
+    rec.start();
+  },
   today: () => new Date().toISOString().split('T')[0],
   formatDate: (d) => {
     const date = new Date(d);
@@ -1734,11 +1755,26 @@ const Billing = {
     return { subtotal, discount, total };
   },
 
+  autofillFromInventory: (inputEl) => {
+    const val = inputEl.value.trim();
+    const products = Store.getProducts() || [];
+    const p = products.find(prod => prod.name === val || `${prod.name} (₹${prod.price||0})` === val);
+    if (p) {
+      const row = inputEl.closest('.item-row');
+      row.querySelector('.item-desc').value = p.name;
+      if (p.category) row.querySelector('.item-cat').value = p.category;
+      if (p.price) row.querySelector('.item-price').value = p.price;
+      Billing.calcTotals();
+      Toast.show('✓ Autofilled from Inventory!', 'success');
+    }
+  },
+
   addItemRow: (cat = 'Unstitched Suit', desc = '', details = '', qty = 1, price = '') => {
     if (!cat) cat = 'Unstitched Suit';
     const list = document.getElementById('items-container');
     const div  = document.createElement('div');
     div.className = 'item-row';
+    const uniqueId = 'item-name-' + Date.now();
     div.innerHTML = `
       <div class="item-col item-col-cat">
         <label class="mobile-only-label">Category</label>
@@ -1746,9 +1782,12 @@ const Billing = {
           ${CONFIG.categories.map(c => `<option ${c===cat?'selected':''}>${c}</option>`).join('')}
         </select>
       </div>
-      <div class="item-col item-col-desc">
+      <div class="item-col item-col-desc" style="position:relative;">
         <label class="mobile-only-label">Item Name</label>
-        <input class="form-input item-desc" placeholder="Item name (e.g. Black Georgette Suit)" value="${H.escHtml(desc)}" style="height:44px;font-size:14px;">
+        <div style="display:flex;gap:4px;">
+          <input id="${uniqueId}" class="form-input item-desc" list="inventory-autocomplete-list" placeholder="Pick from Inventory or speak..." value="${H.escHtml(desc)}" style="height:44px;font-size:14px;flex:1;" onchange="Billing.autofillFromInventory(this)">
+          <button type="button" class="btn btn-sm btn-outline" style="padding:0 10px;font-size:13px;height:44px;flex-shrink:0;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('${uniqueId}')" title="Voice Type">🎙️</button>
+        </div>
       </div>
       <div class="item-col item-col-details">
         <label class="mobile-only-label">Colour / Details (Optional)</label>
@@ -1889,6 +1928,9 @@ Views['new-bill'] = {
                   <option value="Cotton">
                   <option value="Crepe">
                   <option value="Silk">
+                </datalist>
+                <datalist id="inventory-autocomplete-list">
+                  ${(Store.getProducts() || []).map(p => `<option value="${H.escHtml(p.name)}">`).join('')}
                 </datalist>
               </div>
               <div class="form-group">
@@ -2768,8 +2810,18 @@ Views['inventory'] = {
 
   formHtml: (p) => `
     <div class="form-group">
-      <label class="form-label">Product Name *</label>
-      <input id="prod-name" class="form-input" placeholder="e.g. Georgette Anarkali Set" value="${H.escHtml(p?.name||'')}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <label class="form-label" style="margin:0;">Product Name *</label>
+        <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px;height:24px;font-size:11px;display:flex;align-items:center;gap:4px;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('prod-name')">
+          🎙️ Speak Name
+        </button>
+      </div>
+      <input id="prod-name" class="form-input" placeholder="e.g. Pure Cotton Jaipuri Suit Set" value="${H.escHtml(p?.name||'')}">
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">
+        ${['Pure Cotton', 'Jaipuri Suit', 'Kalamkari Print', 'Chanderi Silk', 'Anarkali Set', 'Malmal Dupatta', 'Hand Block Print', 'Co-ord Set', 'Organza Dupatta', 'Banarasi Silk', 'Embroidered'].map(chip => `
+          <button type="button" style="cursor:pointer;border:1px solid var(--gold-300);background:var(--cream-50);color:var(--dark-800);border-radius:12px;font-size:11px;padding:3px 9px;" onclick="const el=document.getElementById('prod-name'); el.value = el.value ? el.value + ' ' + '${chip}' : '${chip}'">+ ${chip}</button>
+        `).join('')}
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">SKU / Custom Barcode Code <span style="font-weight:400;color:var(--text-muted)">(e.g. 101, JS-01 - leave blank to auto-generate)</span></label>
@@ -2791,8 +2843,18 @@ Views['inventory'] = {
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Description</label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <label class="form-label" style="margin:0;">Description</label>
+        <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px;height:24px;font-size:11px;display:flex;align-items:center;gap:4px;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('prod-desc')">
+          🎙️ Speak Description
+        </button>
+      </div>
       <textarea id="prod-desc" class="form-textarea" placeholder="Color, fabric, size details...">${H.escHtml(p?.description||'')}</textarea>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">
+        ${['3-Piece Suit Set', 'Kurta + Pant + Dupatta', 'Pure Soft Fabric', 'Fast Color', 'Hand Wash Only', 'Dry Clean Recommended', 'Available in M/L/XL/XXL'].map(chip => `
+          <button type="button" style="cursor:pointer;border:1px solid var(--gold-300);background:var(--cream-50);color:var(--dark-800);border-radius:12px;font-size:11px;padding:3px 9px;" onclick="const el=document.getElementById('prod-desc'); el.value = el.value ? el.value + ', ' + '${chip}' : '${chip}'">+ ${chip}</button>
+        `).join('')}
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
