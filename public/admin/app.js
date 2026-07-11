@@ -670,12 +670,18 @@ _For queries: ${CONFIG.phone1}_`;
   printAndShare: async (bill, type) => {
     localStorage.setItem('printerType', type);
     const copies = parseInt(document.getElementById('bill-print-copies')?.value || '1', 10);
-    if (type === 'thermal' && BluetoothPOS.isConnected()) {
-      for (let i = 0; i < copies; i++) {
-        await BluetoothPOS.printBillRaw(bill);
-        if (i < copies - 1) await new Promise(r => setTimeout(r, 1200));
+    if (type === 'thermal') {
+      if (!BluetoothPOS.isConnected()) {
+        Toast.show('Connecting to Bluetooth Thermal Printer...', 'gold');
+        await BluetoothPOS.connect();
       }
-      return;
+      if (BluetoothPOS.isConnected()) {
+        for (let i = 0; i < copies; i++) {
+          await BluetoothPOS.printBillRaw(bill);
+          if (i < copies - 1) await new Promise(r => setTimeout(r, 1200));
+        }
+        return;
+      }
     }
     for (let i = 0; i < copies; i++) {
       Print.bill(bill);
@@ -2479,7 +2485,8 @@ Views['bills'] = {
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-whatsapp" onclick="Share.openShareModal(Store.getBill('${b.id}'))">📱 Share</button>
-            <button class="btn btn-sm btn-ghost" onclick="Print.bill(Store.getBill('${b.id}'))" title="Print Bill">🖨️</button>
+            <button class="btn btn-sm btn-outline" style="border-color:#B8860B;color:#B8860B" onclick="Share.printAndShare(Store.getBill('${b.id}'), 'thermal')" title="Instant Thermal Print">🧾 Thermal</button>
+            <button class="btn btn-sm btn-ghost" onclick="Share.printAndShare(Store.getBill('${b.id}'), 'a4')" title="Print A4 Invoice">📄 A4</button>
             ${b.isOnline ? `<button class="btn btn-sm btn-ghost" onclick="Print.shippingLabel(Store.getBill('${b.id}'))" style="background:#F0FDF4;color:#166534" title="Print Shipping Label">📦 Label</button>` : ''}
             ${b.payment.due > 0 ? `<button class="btn btn-sm" style="background:#DBEAFE;color:#1D4ED8" onclick="Views.bills.clearDue('${b.id}')">💰 Clear Due</button>` : ''}
             <button class="btn btn-sm btn-danger" onclick="Views.bills.deleteBill('${b.id}')">🗑️</button>
@@ -2584,7 +2591,8 @@ Views['bills'] = {
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-whatsapp" onclick="Share.openShareModal(Store.getBill('${b.id}'))">📱 Share</button>
-            <button class="btn btn-sm btn-ghost" onclick="Print.bill(Store.getBill('${b.id}'))" title="Print Bill">🖨️</button>
+            <button class="btn btn-sm btn-outline" style="border-color:#B8860B;color:#B8860B" onclick="Share.printAndShare(Store.getBill('${b.id}'), 'thermal')" title="Instant Thermal Print">🧾 Thermal</button>
+            <button class="btn btn-sm btn-ghost" onclick="Share.printAndShare(Store.getBill('${b.id}'), 'a4')" title="Print A4 Invoice">📄 A4</button>
             ${b.isOnline ? `<button class="btn btn-sm btn-ghost" onclick="Print.shippingLabel(Store.getBill('${b.id}'))" style="background:#F0FDF4;color:#166534" title="Print Shipping Label">📦 Label</button>` : ''}
             ${b.payment.due > 0 ? `<button class="btn btn-sm" style="background:#DBEAFE;color:#1D4ED8" onclick="Views.bills.clearDue('${b.id}')">💰 Clear Due</button>` : ''}
             <button class="btn btn-sm btn-danger" onclick="Views.bills.deleteBill('${b.id}')">🗑️</button>
