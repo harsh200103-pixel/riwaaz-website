@@ -3057,7 +3057,7 @@ Views['inventory'] = {
   formHtml: (p) => `
     <div class="form-group">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <label class="form-label" style="margin:0;">Product Name *</label>
+        <label class="form-label" style="margin:0;">Product Name <span style="font-weight:400;color:var(--text-muted)">(Optional for Shop Exclusive items)</span></label>
         <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px;height:24px;font-size:11px;display:flex;align-items:center;gap:4px;border-color:var(--gold-500);color:var(--gold-700);" onclick="H.voiceType('prod-name')">
           🎙️ Speak Name
         </button>
@@ -3137,7 +3137,7 @@ Views['inventory'] = {
     </div>`,
 
   saveProduct: async (editId, printAfterSave = false) => {
-    const name  = document.getElementById('prod-name')?.value.trim();
+    let name    = document.getElementById('prod-name')?.value.trim();
     const cat   = document.getElementById('prod-cat')?.value;
     const fabric= document.getElementById('prod-fabric')?.value || null;
     const desc  = document.getElementById('prod-desc')?.value.trim();
@@ -3147,12 +3147,18 @@ Views['inventory'] = {
     const inputSku = document.getElementById('prod-sku')?.value.trim();
     const finalSku = inputSku || Views.inventory.generateNextSku();
     
-    const isShopOnly = document.getElementById('prod-shoponly')?.checked;
+    let isShopOnly = document.getElementById('prod-shoponly')?.checked;
     const soldOut = document.getElementById('prod-soldout')?.checked || false;
     const colorsInput = document.getElementById('prod-colors')?.value.trim();
     const colors = colorsInput ? colorsInput.split(',').map(c => c.trim()).filter(Boolean) : [];
     
-    if (!name) { Toast.show('⚠️ Product name is required', 'error'); return; }
+    // Allow Shop Exclusive item with just SKU & Price
+    if (!name && (isShopOnly || inputSku || price > 0)) {
+      name = `${cat || 'Shop Exclusive'} #${finalSku}`;
+      isShopOnly = true;
+    }
+
+    if (!name) { Toast.show('⚠️ Product name or SKU code is required', 'error'); return; }
     
     const images = Views.inventory.currentImages || [];
     if (!isShopOnly && images.length === 0) {
