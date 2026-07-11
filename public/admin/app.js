@@ -979,7 +979,7 @@ const BluetoothPOS = {
   },
 
   printBarcodeRaw: async (p) => {
-    const sku = String(p.sku || p.id || '1001').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const sku = String(p.sku || p.id || '1001').toUpperCase().replace(/[^A-Z0-9\-]/g, '');
     const name = (p.name || '').slice(0, 22);
     const price = p.price || 0;
     
@@ -1976,11 +1976,43 @@ const Billing = {
 
   addProductBySku: (sku) => {
     if (!sku) return false;
-    const searchSku = sku.trim().toLowerCase();
-    const p = Store.getProducts().find(prod => 
-      prod.id.toLowerCase() === searchSku || 
-      (prod.sku && prod.sku.toLowerCase() === searchSku)
+    const raw = sku.trim();
+    const cleanSearch = raw.toLowerCase();
+    const alphaNumSearch = cleanSearch.replace(/[^a-z0-9]/g, '');
+
+    const products = Store.getProducts();
+    // 1. Try exact or lowercase ID/SKU match
+    let p = products.find(prod => 
+      String(prod.id).toLowerCase() === cleanSearch || 
+      (prod.sku && String(prod.sku).trim().toLowerCase() === cleanSearch)
     );
+
+    // 2. Try stripped alphanumeric match (handles hyphens/spaces differences like JS-01 vs JS01)
+    if (!p && alphaNumSearch) {
+      p = products.find(prod => {
+        const idClean = String(prod.id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const skuClean = prod.sku ? String(prod.sku).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+        return idClean === alphaNumSearch || skuClean === alphaNumSearch;
+      });
+    }
+
+    // 3. Try leading zero tolerance (e.g. "0012" vs "12")
+    if (!p) {
+      const numOnly = cleanSearch.replace(/^0+/, '');
+      if (numOnly) {
+        p = products.find(prod => {
+          const idNum = String(prod.id).toLowerCase().replace(/^0+/, '');
+          const skuNum = prod.sku ? String(prod.sku).toLowerCase().replace(/^0+/, '') : '';
+          return idNum === numOnly || skuNum === numOnly;
+        });
+      }
+    }
+
+    // 4. Try exact product name match
+    if (!p) {
+      p = products.find(prod => String(prod.name || '').trim().toLowerCase() === cleanSearch);
+    }
+
     if (p) {
       // Remove empty rows first
       const rows = document.querySelectorAll('.item-row');
@@ -1999,7 +2031,7 @@ const Billing = {
       return true;
     } else {
       H.beep(false);
-      Toast.show('⚠️ Item not found in Inventory', 'error');
+      Toast.show(`⚠️ Item not found for scanned code: "${raw}"`, 'error');
       return false;
     }
   },
