@@ -628,21 +628,23 @@ _For queries: ${CONFIG.phone1}_`;
       const due = Math.max(0, total - paid);
       const dateStr = bill.date || H.today();
 
-      let text = `✨ *RIWAAZ BY ESHMIRA*\n`;
-      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-      text += `Dear *${custName}*,\n\n`;
-      text += `📄 *Invoice No:* #${bill.id}\n`;
-      text += `📅 *Date:* ${dateStr}\n`;
-      text += `💰 *Total Amount:* ₹${total.toLocaleString('en-IN')}\n`;
+      let text = `RIWAAZ BY ESHMIRA\n`;
+      text += `Haute Couture & Luxury Ethnic Studio\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      text += `Dear ${custName},\n\n`;
+      text += `We thank you for patronizing Riwaaz by Eshmira. Please find your official invoice summary below:\n\n`;
+      text += `Invoice Number  : #${bill.id}\n`;
+      text += `Invoice Date    : ${dateStr}\n`;
+      text += `Total Amount    : INR ${total.toLocaleString('en-IN')}\n`;
       if (due > 0) {
-        text += `💵 *Paid Amount:* ₹${paid.toLocaleString('en-IN')}\n`;
-        text += `⚠️ *Balance Payable:* ₹${due.toLocaleString('en-IN')}\n`;
+        text += `Amount Paid     : INR ${paid.toLocaleString('en-IN')}\n`;
+        text += `Balance Payable : INR ${due.toLocaleString('en-IN')}\n`;
       } else {
-        text += `✅ *Payment Status:* FULLY PAID\n`;
+        text += `Payment Status  : FULLY PAID\n`;
       }
-      text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      text += `🔗 *View & Download Official PDF Bill:*\n${brandedLink}\n\n`;
-      text += `Warm Regards,\n*Riwaaz by Eshmira*\n📍 Indore · 📞 9827788773`;
+      text += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      text += `View & Download Official Digital Invoice:\n${brandedLink}\n\n`;
+      text += `Warm Regards,\nRiwaaz by Eshmira\nIndore | Ph: 9827788773, 9770496796`;
       return text;
     } catch (e) {
       console.error("Failed to generate magic link", e);
